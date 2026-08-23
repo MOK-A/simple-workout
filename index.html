@@ -692,8 +692,48 @@ function freshState(){
     settings: { unit:"kg", sound:true, vibration:true },
     lastWorkoutId: workouts[0].id,
     currentSessionId: null,
+    debugLog: [],
   };
 }
+
+// A genuinely empty state: no demo exercises, routines, or history at all.
+function emptyState(){
+  return {
+    exercises: [],
+    workouts: [],
+    sessions: [],
+    restTimes: {},
+    settings: { unit:"kg", sound:true, vibration:true },
+    lastWorkoutId: null,
+    currentSessionId: null,
+    debugLog: [],
+  };
+}
+
+/* ============================================================
+   DEBUG LOG
+   A lightweight, capped, on-device log of key actions and any JS errors.
+   There's no live connection to Claude from the phone, so this can't be
+   monitored in real time — but it can be exported after a session (Réglages)
+   and shared for retrospective debugging.
+   ============================================================ */
+const MAX_LOG_ENTRIES = 500;
+function logEvent(type, details){
+  try{
+    if(!state || !Array.isArray(state.debugLog)) return;
+    state.debugLog.push({ t: new Date().toISOString(), type, details: details || null });
+    if(state.debugLog.length > MAX_LOG_ENTRIES) state.debugLog.shift();
+  }catch(e){}
+}
+
+window.addEventListener("error", (e)=>{
+  logEvent("js_error", { message: e.message, filename: e.filename, line: e.lineno, col: e.colno, stack: e.error && e.error.stack });
+  try{ persist(); }catch(err){}
+});
+window.addEventListener("unhandledrejection", (e)=>{
+  logEvent("unhandled_rejection", { reason: String(e.reason), stack: e.reason && e.reason.stack });
+  try{ persist(); }catch(err){}
+});
 
 /* ============================================================
    STORAGE
@@ -713,6 +753,7 @@ async function loadState(){
       const res = await window.storage.get(STORAGE_KEY, false);
       if(res && res.value){
         state = JSON.parse(res.value);
+        if(!Array.isArray(state.debugLog)) state.debugLog = [];
         return;
       }
     }catch(e){
@@ -723,6 +764,7 @@ async function loadState(){
       const raw = localStorage.getItem(STORAGE_KEY);
       if(raw){
         state = JSON.parse(raw);
+        if(!Array.isArray(state.debugLog)) state.debugLog = [];
         return;
       }
     }catch(e){
@@ -967,6 +1009,7 @@ function beginSessionIfNeeded(session){
   if(!session.startDate){
     session.startDate = new Date().toISOString();
     session.status = "in_progress";
+    logEvent("session_start", { workoutName: session.workoutName });
   }
 }
 
@@ -995,14 +1038,18 @@ function cycleExerciseState(exerciseId, workoutIdForNaming){
   if(!session.exerciseState) session.exerciseState = {};
   const cur = session.exerciseState[exerciseId] || { status: "notStarted" };
   let next;
+  const exName = getExercise(exerciseId) ? getExercise(exerciseId).name : exerciseId;
   if(cur.status === "notStarted"){
     next = { status: "active", startedAt: Date.now(), doneAt: null };
     beginSessionIfNeeded(session);
+    logEvent("exercise_start", { exercise: exName });
   } else if(cur.status === "active"){
     const durationSec = Math.round((Date.now() - cur.startedAt) / 1000);
     next = { status: "done", startedAt: cur.startedAt, doneAt: Date.now(), durationSec };
+    logEvent("exercise_done", { exercise: exName, durationSec });
   } else {
     next = { status: "notStarted" };
+    logEvent("exercise_reset", { exercise: exName });
   }
   session.exerciseState[exerciseId] = next;
   persist();
@@ -1498,15 +1545,18 @@ function handleSetStatusTap(ex, s, idx, isDraft, activeSessionBefore){
     target.startedAt = Date.now();
     beginSessionIfNeeded(session);
     ensureExerciseActive(session, ex.id);
+    logEvent("set_start", { exercise: ex.name, index: idx });
   } else if(status === "active"){
     target.completed = true;
     target.execDurationSec = Math.round((Date.now() - target.startedAt) / 1000);
     beginSessionIfNeeded(session);
     startRest(ex, target);
+    logEvent("set_done", { exercise: ex.name, index: idx, execDurationSec: target.execDurationSec, weight: target.weight, reps: target.reps });
   } else {
     target.completed = false;
     target.startedAt = null;
     target.execDurationSec = undefined;
+    logEvent("set_reset", { exercise: ex.name, index: idx });
   }
   persist();
   renderSeance();
@@ -1633,6 +1683,7 @@ function startRest(ex, setRef){
   activeRest = { exerciseId: ex.id, exerciseName: ex.name, setRef: setRef || null, startTs: Date.now(), targetSec };
   refreshRestOverlay();
   if(!restTicker) restTicker = setInterval(tickRest, 250);
+  logEvent("rest_start", { exercise: ex.name, targetSec });
 }
 
 function stopRest(){
@@ -1642,6 +1693,7 @@ function stopRest(){
   if(activeRest.setRef){
     activeRest.setRef.restAfterSec = elapsedSec;
   }
+  logEvent("rest_stop", { exercise: activeRest.exerciseName, targetSec: activeRest.targetSec, actualSec: elapsedSec });
   persist();
   activeRest = null;
   clearInterval(restTicker);
@@ -2022,6 +2074,8 @@ document.getElementById("finish-modal-save").addEventListener("click", ()=>{
     session.status = "completed";
     state.currentSessionId = null;
     stopRest();
+    const setCount = session.sets.filter(s=>s.completed).length;
+    logEvent("session_finish", { workoutName: session.workoutName, setCount });
     persist();
     savedSessionId = session.id;
   }
@@ -2249,6 +2303,13 @@ function renderParametres(){
   exportRow.addEventListener("click", exportData);
   dataGroup.appendChild(exportRow);
 
+  const exportLogRow = document.createElement("button");
+  exportLogRow.className = "settings-action-row";
+  const logCount = (state.debugLog || []).length;
+  exportLogRow.innerHTML = '<span class="lbl">Exporter le journal de debug'+(logCount ? ' ('+logCount+')' : '')+'</span><span class="chev">›</span>';
+  exportLogRow.addEventListener("click", exportDebugLog);
+  dataGroup.appendChild(exportLogRow);
+
   const resetRow = document.createElement("button");
   resetRow.className = "settings-action-row danger";
   resetRow.innerHTML = '<span class="lbl">Réinitialiser les données</span>';
@@ -2259,7 +2320,7 @@ function renderParametres(){
 
   const dataNote = document.createElement("div");
   dataNote.className = "settings-note";
-  dataNote.textContent = "L'export produit un fichier JSON contenant toutes tes séances, exercices et ton historique — pratique à partager pour analyse. La réinitialisation efface tout et restaure les données de démonstration d'origine.";
+  dataNote.textContent = "L'export produit un fichier JSON contenant toutes tes séances, exercices et ton historique — pratique à partager pour analyse. Le journal de debug garde une trace des actions clés (et de toute erreur rencontrée) pour aider à comprendre un souci après coup. La réinitialisation efface tout et repart sur une base vide.";
   scroll.appendChild(dataNote);
 
   document.getElementById("sound-toggle").addEventListener("change", (e)=>{
@@ -2284,14 +2345,29 @@ function exportData(){
   setTimeout(()=> URL.revokeObjectURL(url), 2000);
 }
 
+function exportDebugLog(){
+  const log = state.debugLog || [];
+  const lines = log.map(e => e.t + " | " + e.type + " | " + (e.details ? JSON.stringify(e.details) : ""));
+  const text = lines.length ? lines.join("\n") : "(journal vide — aucune action enregistrée pour le moment)";
+  const blob = new Blob([text], { type: "text/plain" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  const dateStr = new Date().toISOString().slice(0,19).replace(/[:T]/g, "-");
+  a.href = url;
+  a.download = "simple-workout-debug-log-" + dateStr + ".txt";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(()=> URL.revokeObjectURL(url), 2000);
+}
+
 function resetAllData(){
   openConfirm(
     "Réinitialiser les données",
-    "Toutes tes séances, routines, exercices et ton historique seront définitivement supprimés et remplacés par les données de démonstration d'origine. Cette action est irréversible.",
+    "Toutes tes séances, routines, exercices et ton historique seront définitivement supprimés. L'application repartira sur une base entièrement vide (sans données de démonstration). Cette action est irréversible.",
     ()=>{
-      state = freshState();
-      currentWorkoutFilter = state.workouts.length ? state.workouts[0].id : "ALL";
-      state.lastWorkoutId = currentWorkoutFilter === "ALL" ? null : currentWorkoutFilter;
+      state = emptyState();
+      currentWorkoutFilter = "ALL";
       editMode = false;
       routineSheetEditMode = false;
       clearDraftCache();
@@ -2570,6 +2646,15 @@ async function init(){
 }
 
 init();
+
+// Register the service worker so the app works fully offline after the first
+// successful load. Safe no-op inside environments without service worker
+// support (e.g. Claude's artifact preview) or when sw.js isn't hosted alongside.
+if("serviceWorker" in navigator){
+  window.addEventListener("load", ()=>{
+    navigator.serviceWorker.register("./sw.js").catch(()=>{});
+  });
+}
 
 })();
 </script>
