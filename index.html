@@ -138,9 +138,10 @@
   }
   .exercise-status-btn{
     width:27px; height:27px; border-radius:50%; border:1.6px solid var(--text-faint);
-    display:flex; align-items:center; justify-content:center; font-size:12px; color:transparent;
+    display:flex; align-items:center; justify-content:center; font-size:12px; color:var(--text-dim);
     flex-shrink:0; transition:background .15s, border-color .15s, color .15s;
   }
+  .exercise-status-btn.notStarted svg{margin-left:2px;}
   .exercise-status-btn.active{border-color:var(--accent); color:var(--accent); background:var(--accent-dim);}
   .exercise-status-btn.done{background:var(--green); border-color:var(--green); color:#04140a; font-size:14px;}
 
@@ -174,9 +175,10 @@
   }
   .set-check{
     width:28px; height:28px; border-radius:50%; border:1.6px solid var(--text-faint);
-    display:flex; align-items:center; justify-content:center; font-size:14px; color:transparent;
+    display:flex; align-items:center; justify-content:center; font-size:14px; color:var(--text-dim);
     flex-shrink:0; transition:background .15s, border-color .15s;
   }
+  .set-check.notStarted svg{margin-left:2px;}
   .set-check.done{background:var(--green); border-color:var(--green); color:#04140a;}
   .set-check.active{background:var(--accent-dim); border-color:var(--accent); color:var(--accent); font-size:10px;}
   .stepper{
@@ -392,6 +394,8 @@
     width:100%; background:var(--surface-3); border-radius:10px; padding:12px 14px; font-size:16px;
     border:none; margin-bottom:16px; outline:none;
   }
+  .unit-choice-row{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:14px;}
+  .unit-choice-label{font-size:13.5px; color:var(--text-dim);}
 
   /* ---------- Add exercise sheet ---------- */
   #add-exercise-sheet .sheet{height:74vh;}
@@ -581,6 +585,32 @@
     </div>
   </div>
 
+  <!-- ===================== NEW EXERCISE MODAL (with unit choice) ===================== -->
+  <div class="modal-backdrop" id="new-exercise-modal">
+    <div class="modal">
+      <h2>Nouvel exercice</h2>
+      <input type="text" id="new-exercise-name-input" placeholder="Nom de l'exercice">
+      <div class="unit-choice-row">
+        <span class="unit-choice-label">1ère colonne</span>
+        <div class="segmented" id="new-exercise-weight-mode">
+          <button data-value="weight" class="active">Poids</button>
+          <button data-value="level">Niveau</button>
+        </div>
+      </div>
+      <div class="unit-choice-row">
+        <span class="unit-choice-label">2ème colonne</span>
+        <div class="segmented" id="new-exercise-reps-mode">
+          <button data-value="reps" class="active">Reps</button>
+          <button data-value="duration">Durée</button>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button id="new-exercise-cancel">Annuler</button>
+        <button id="new-exercise-ok" class="primary">Créer</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ===================== FINISH SESSION MODAL ===================== -->
   <div class="modal-backdrop" id="finish-modal">
     <div class="modal">
@@ -598,6 +628,8 @@
     <button id="undo-btn">Annuler</button>
   </div>
 
+  <input type="file" id="import-file-input" accept="application/json,.json" class="hidden">
+
 </div>
 
 <script>
@@ -608,6 +640,10 @@
    SEED DATA
    ============================================================ */
 function uid(prefix){ return prefix + "-" + Math.random().toString(36).slice(2,9); }
+
+// Small "play" triangle used for the notStarted state of set/exercise status buttons —
+// clearer than an empty circle to signal "tap to start".
+const PLAY_ICON_SVG = '<svg viewBox="0 0 24 24" width="11" height="11"><polygon points="6,4 20,12 6,20" fill="currentColor"/></svg>';
 
 const SEED_EXERCISES = [
   "Développé couché","Développé incliné","Développé décliné","Développé militaire",
@@ -852,8 +888,9 @@ function computeAvgExerciseRest(exerciseId){
   return Math.round(vals.reduce((a,b)=>a+b,0)/vals.length);
 }
 
-function computeAverageLabel(sets, exerciseId){
+function computeAverageLabel(sets, ex){
   if(!sets.length) return null;
+  const exerciseId = ex.id;
   const avgWeight = sets.reduce((a,s)=>a+s.weight,0)/sets.length;
   const avgReps = sets.reduce((a,s)=>a+s.reps,0)/sets.length;
   const restVals = sets.slice(0, -1).map(s=>s.restAfterSec).filter(v=>typeof v==="number");
@@ -865,9 +902,6 @@ function computeAverageLabel(sets, exerciseId){
     const avgAll = computeAvgExerciseRest(exerciseId);
     if(avgAll !== null) restLabel = formatMMSS(avgAll);
   }
-  const weightRounded = Math.round(avgWeight*2)/2;
-  const repsRounded = Math.round(avgReps*10)/10;
-  const repsStr = Number.isInteger(repsRounded) ? String(repsRounded) : String(repsRounded).replace(".", ",");
 
   const exDurations = state.sessions
     .filter(s => s.status!=="draft" && s.exerciseState && s.exerciseState[exerciseId] && s.exerciseState[exerciseId].status==="done" && typeof s.exerciseState[exerciseId].durationSec==="number")
@@ -883,7 +917,15 @@ function computeAverageLabel(sets, exerciseId){
     execLabel = formatMMSS(execVals.reduce((a,b)=>a+b,0)/execVals.length);
   }
 
-  let out = formatWeight(weightRounded) + " " + state.settings.unit + " · " + repsStr + " reps";
+  let out;
+  const weightRounded = (getWeightMode(ex)==="level") ? Math.round(avgWeight) : Math.round(avgWeight*2)/2;
+  if(getRepsMode(ex)==="duration"){
+    out = formatMetric1(ex, weightRounded) + " " + metric1UnitLabel(ex) + " · " + formatMetric2(ex, Math.round(avgReps)) + " " + metric2UnitLabel(ex);
+  } else {
+    const repsRounded = Math.round(avgReps*10)/10;
+    const repsStr = Number.isInteger(repsRounded) ? String(repsRounded) : String(repsRounded).replace(".", ",");
+    out = formatMetric1(ex, weightRounded) + " " + metric1UnitLabel(ex) + " · " + repsStr + " " + metric2UnitLabel(ex);
+  }
   if(restLabel) out += " · " + restLabel + " repos";
   if(execLabel) out += " · " + execLabel + " série";
   if(durationLabel) out += " · " + durationLabel + " exercice";
@@ -892,6 +934,8 @@ function computeAverageLabel(sets, exerciseId){
 
 // Average stats line for a routine, based on its completed sessions:
 // total duration, number of exercises, number of sets, total weight (volume), total reps.
+// Only sets belonging to "standard" exercises (weight+reps) count toward the weight/reps
+// totals — summing a "niveau" or a duration alongside real kg/reps wouldn't mean anything.
 function computeSessionsAverageStats(sessions){
   if(!sessions.length) return null;
   let totalDurSec = 0, totalEx = 0, totalSets = 0, totalWeight = 0, totalReps = 0;
@@ -900,7 +944,12 @@ function computeSessionsAverageStats(sessions){
     totalDurSec += (new Date(s.endDate) - new Date(s.startDate)) / 1000;
     totalEx += new Set(completedSets.map(x=>x.exerciseId)).size;
     totalSets += completedSets.length;
-    completedSets.forEach(x=>{ totalWeight += x.weight * x.reps; totalReps += x.reps; });
+    completedSets.forEach(x=>{
+      if(isStandardExercise(getExercise(x.exerciseId))){
+        totalWeight += x.weight * x.reps;
+        totalReps += x.reps;
+      }
+    });
   });
   const n = sessions.length;
   return {
@@ -931,6 +980,34 @@ function formatWeight(w){
   let v = w;
   if(Number.isInteger(v)) return String(v);
   return String(Math.round(v*10)/10).replace(".", ",");
+}
+
+// Per-exercise unit modes: the "weight" column can instead track a "niveau" (level),
+// and the "reps" column can instead track a duration. Missing/undefined defaults to
+// the standard modes, for backward compatibility with exercises created earlier.
+function getWeightMode(ex){ return (ex && ex.weightMode === "level") ? "level" : "weight"; }
+function getRepsMode(ex){ return (ex && ex.repsMode === "duration") ? "duration" : "reps"; }
+function isStandardExercise(ex){ return getWeightMode(ex)==="weight" && getRepsMode(ex)==="reps"; }
+
+function formatMetric1(ex, value){
+  if(getWeightMode(ex)==="level") return String(Math.round(value));
+  return formatWeight(value);
+}
+function metric1UnitLabel(ex){
+  return getWeightMode(ex)==="level" ? "niv" : state.settings.unit;
+}
+function formatMetric2(ex, value){
+  if(getRepsMode(ex)==="duration") return formatMMSS(value);
+  return String(value);
+}
+function metric2UnitLabel(ex){
+  return getRepsMode(ex)==="duration" ? "durée" : "reps";
+}
+function metric1HeaderLabel(ex){
+  return getWeightMode(ex)==="level" ? "Niveau" : "Poids";
+}
+function metric2HeaderLabel(ex){
+  return getRepsMode(ex)==="duration" ? "Durée" : "Reps";
 }
 
 const MONTHS_FR = ["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"];
@@ -998,7 +1075,9 @@ function materializeExercise(exerciseId, workoutIdForNaming){
   if(!hasSets){
     const draft = getDraftSetsForExercise(exerciseId, session.id);
     draft.forEach((d,i)=>{
-      session.sets.push({ id: uid("s"), exerciseId, weight:d.weight, reps:d.reps, completed:false, order:i });
+      const newSet = { id: uid("s"), exerciseId, weight:d.weight, reps:d.reps, completed:false, order:i };
+      if(typeof d.restPlannedSec === "number") newSet.restPlannedSec = d.restPlannedSec;
+      session.sets.push(newSet);
     });
     delete draftCache[exerciseId];
   }
@@ -1224,7 +1303,7 @@ function renderSeance(){
           ex.name = val; persist(); renderSeance();
         }),
         onDuplicate: ()=>{
-          const copy = { id: uid("ex"), name: ex.name+" copie" };
+          const copy = { id: uid("ex"), name: ex.name+" copie", weightMode: ex.weightMode, repsMode: ex.repsMode };
           state.exercises.push(copy);
           const idx = currentWorkoutObj.exerciseIds.indexOf(ex.id);
           currentWorkoutObj.exerciseIds.splice(idx+1, 0, copy.id);
@@ -1244,7 +1323,7 @@ function renderSeance(){
           ex.name = val; persist(); renderSeance();
         }),
         onDuplicate: ()=>{
-          const copy = { id: uid("ex"), name: ex.name+" copie" };
+          const copy = { id: uid("ex"), name: ex.name+" copie", weightMode: ex.weightMode, repsMode: ex.repsMode };
           state.exercises.push(copy);
           persist(); renderSeance();
         },
@@ -1290,7 +1369,7 @@ function renderExerciseBlock(ex, session){
   if(exState.status === "done") block.classList.add("exercise-done");
 
   const lastPerf = getLastPerformance(ex.id, session ? session.id : null);
-  const avgLabel = computeAverageLabel(lastPerf, ex.id);
+  const avgLabel = computeAverageLabel(lastPerf, ex);
 
   const head = document.createElement("div");
   head.className = "exercise-head";
@@ -1319,7 +1398,7 @@ function renderExerciseBlock(ex, session){
 
   const statusBtn = document.createElement("button");
   statusBtn.className = "exercise-status-btn " + exState.status;
-  statusBtn.innerHTML = exState.status === "done" ? "✓" : (exState.status === "active" ? "●" : "");
+  statusBtn.innerHTML = exState.status === "done" ? "✓" : (exState.status === "active" ? "●" : PLAY_ICON_SVG);
   statusBtn.addEventListener("click", (e)=>{
     e.stopPropagation();
     const w = currentWorkoutFilter==="ALL" ? findWorkoutContaining(ex.id) : currentWorkoutFilter;
@@ -1341,7 +1420,7 @@ function renderExerciseBlock(ex, session){
 
     const hdr = document.createElement("div");
     hdr.className = "sets-header-row";
-    hdr.innerHTML = '<span></span><span>Poids</span><span>Reps</span><span>Avant</span><span>Repos</span><span></span>';
+    hdr.innerHTML = '<span></span><span>'+metric1HeaderLabel(ex)+'</span><span>'+metric2HeaderLabel(ex)+'</span><span>Avant</span><span>'+(usingDraft ? "Prévu" : "Repos")+'</span><span></span>';
     wrap.appendChild(hdr);
 
     displaySets.forEach((s, idx)=>{
@@ -1378,8 +1457,8 @@ function renderSetRow(ex, s, idx, isDraft, session, lastPerf){
   idxEl.textContent = String(idx+1);
   row.appendChild(idxEl);
 
-  const weightCell = buildStepperCell(s.weight, "weight", state.settings.unit);
-  const repsCell = buildStepperCell(s.reps, "reps", "reps");
+  const weightCell = buildStepperCell(ex, s.weight, "weight");
+  const repsCell = buildStepperCell(ex, s.reps, "reps");
   row.appendChild(weightCell);
   row.appendChild(repsCell);
 
@@ -1388,7 +1467,7 @@ function renderSetRow(ex, s, idx, isDraft, session, lastPerf){
   prevEl.className = "set-prev";
   if(prevSet){
     const prevRestStr = typeof prevSet.restAfterSec === "number" ? formatMMSS(prevSet.restAfterSec) : null;
-    prevEl.innerHTML = escapeHtml(formatWeight(prevSet.weight)+"×"+prevSet.reps) + (prevRestStr ? '<span class="set-prev-rest">'+prevRestStr+'</span>' : '');
+    prevEl.innerHTML = escapeHtml(formatMetric1(ex, prevSet.weight)+"×"+formatMetric2(ex, prevSet.reps)) + (prevRestStr ? '<span class="set-prev-rest">'+prevRestStr+'</span>' : '');
   } else {
     prevEl.textContent = "—";
   }
@@ -1406,14 +1485,19 @@ function renderSetRow(ex, s, idx, isDraft, session, lastPerf){
     } else {
       restEl.textContent = "—";
     }
-    restEl.style.cursor = "pointer";
-    restEl.addEventListener("click", (e)=>{
-      e.stopPropagation();
-      openRestKeypad(ex, s);
-    });
   } else {
-    restEl.textContent = "—";
+    if(typeof s.restPlannedSec === "number"){
+      restEl.textContent = formatMMSS(s.restPlannedSec);
+      restEl.classList.add("planned");
+    } else {
+      restEl.textContent = "—";
+    }
   }
+  restEl.style.cursor = "pointer";
+  restEl.addEventListener("click", (e)=>{
+    e.stopPropagation();
+    openRestKeypad(ex, s, isDraft, idx);
+  });
   row.appendChild(restEl);
 
   const checkWrap = document.createElement("div");
@@ -1421,7 +1505,7 @@ function renderSetRow(ex, s, idx, isDraft, session, lastPerf){
   const check = document.createElement("button");
   const setStatus = getSetStatus(s, isDraft);
   check.className = "set-check " + setStatus;
-  check.innerHTML = setStatus === "done" ? "✓" : (setStatus === "active" ? "●" : "");
+  check.innerHTML = setStatus === "done" ? "✓" : (setStatus === "active" ? "●" : PLAY_ICON_SVG);
   checkWrap.appendChild(check);
   row.appendChild(checkWrap);
 
@@ -1443,16 +1527,20 @@ function renderSetRow(ex, s, idx, isDraft, session, lastPerf){
   return outer;
 }
 
-function buildStepperCell(value, field, unitLabel){
+function buildStepperCell(ex, value, field){
   const el = document.createElement("div");
   el.className = "stepper";
   el.dataset.field = field;
+
+  const isMetric1 = field === "weight";
+  const displayVal = isMetric1 ? formatMetric1(ex, value) : formatMetric2(ex, value);
+  const unitLabel = isMetric1 ? metric1UnitLabel(ex) : metric2UnitLabel(ex);
 
   const valBtn = document.createElement("button");
   valBtn.className = "val-btn";
   const val = document.createElement("span");
   val.className = "val";
-  val.textContent = field==="weight" ? formatWeight(value) : String(value);
+  val.textContent = displayVal;
   const u = document.createElement("span");
   u.className = "u";
   u.textContent = unitLabel;
@@ -1478,11 +1566,18 @@ function buildStepperCell(value, field, unitLabel){
 }
 
 function attachStepperEvents(el, setRef, field, ex, isDraft, idx){
+  const isMetric1 = field === "weight";
+  const mode = isMetric1 ? getWeightMode(ex) : getRepsMode(ex);
+  const step = (field==="reps" && mode==="duration") ? 5 : 1;
+
   function currentVal(){ return field==="weight" ? setRef.weight : setRef.reps; }
 
   function applyValue(newVal){
-    if(field==="reps") newVal = Math.max(0, Math.round(newVal));
-    else newVal = Math.max(0, Math.round(newVal*2)/2);
+    if(field==="weight"){
+      newVal = (mode==="level") ? Math.max(0, Math.round(newVal)) : Math.max(0, Math.round(newVal*2)/2);
+    } else {
+      newVal = Math.max(0, Math.round(newVal));
+    }
     setRef[field] = newVal;
     if(isDraft){
       draftCache[ex.id][idx][field] = newVal;
@@ -1490,16 +1585,16 @@ function attachStepperEvents(el, setRef, field, ex, isDraft, idx){
       persist();
     }
     const valEl = el.querySelector(".val");
-    valEl.textContent = field==="weight" ? formatWeight(newVal) : String(newVal);
+    valEl.textContent = isMetric1 ? formatMetric1(ex, newVal) : formatMetric2(ex, newVal);
   }
 
   el.querySelector(".nudge-up").addEventListener("click", (e)=>{
     e.stopPropagation();
-    applyValue(currentVal()+1);
+    applyValue(currentVal()+step);
   });
   el.querySelector(".nudge-down").addEventListener("click", (e)=>{
     e.stopPropagation();
-    applyValue(currentVal()-1);
+    applyValue(currentVal()-step);
   });
   el.querySelector(".val-btn").addEventListener("click", (e)=>{
     e.stopPropagation();
@@ -1774,12 +1869,27 @@ document.getElementById("rest-stop-btn").addEventListener("click", stopRest);
    KEYPAD
    ============================================================ */
 function openKeypad(scrubberEl, setRef, field, ex, isDraft, idx){
+  const isMetric1 = field === "weight";
+  const mode = isMetric1 ? getWeightMode(ex) : getRepsMode(ex);
+
+  if(field === "reps" && mode === "duration"){
+    keypadCtx = { mode: "duration_metric2", scrubberEl, setRef, field, ex, isDraft, idx };
+    const initialSec = setRef[field] || 0;
+    const mm = Math.floor(initialSec/60), ss = Math.round(initialSec%60);
+    keypadCtx.durationDigits = String(mm).padStart(2,"0") + String(ss).padStart(2,"0");
+    document.getElementById("keypad-unit").textContent = "durée";
+    document.getElementById("keypad-value").textContent = formatDurationDigits(keypadCtx.durationDigits);
+    document.querySelectorAll('.keypad-grid button[data-k=","]').forEach(b=> b.classList.add("disabled"));
+    showBackdrop("keypad-sheet");
+    return;
+  }
+
   keypadCtx = { mode: "decimal", scrubberEl, setRef, field, ex, isDraft, idx };
-  const isWeight = field==="weight";
-  document.getElementById("keypad-unit").textContent = isWeight ? state.settings.unit : "reps";
-  const initVal = isWeight ? formatWeight(setRef[field]) : String(setRef[field]);
+  const allowComma = (field==="weight" && mode==="weight");
+  document.getElementById("keypad-unit").textContent = isMetric1 ? metric1UnitLabel(ex) : metric2UnitLabel(ex);
+  const initVal = isMetric1 ? formatMetric1(ex, setRef[field]) : formatMetric2(ex, setRef[field]);
   document.getElementById("keypad-value").textContent = initVal;
-  document.querySelectorAll('.keypad-grid button[data-k=","]').forEach(b=> b.classList.toggle("disabled", !isWeight));
+  document.querySelectorAll('.keypad-grid button[data-k=","]').forEach(b=> b.classList.toggle("disabled", !allowComma));
   showBackdrop("keypad-sheet");
 }
 
@@ -1791,8 +1901,8 @@ function formatDurationDigits(digits){
 // Edit a set's rest time: while it is the one currently counting live, editing
 // finalizes it immediately; once the set is done, it corrects the recorded value;
 // before the set is done, it pre-sets the planned target for its upcoming rest.
-function openRestKeypad(ex, s){
-  keypadCtx = { mode: "duration", setRef: s, ex };
+function openRestKeypad(ex, s, isDraft, idx){
+  keypadCtx = { mode: "duration", setRef: s, ex, isDraft: !!isDraft, idx };
   const initialSec = typeof s.restAfterSec === "number" ? s.restAfterSec
     : (typeof s.restPlannedSec === "number" ? s.restPlannedSec : 0);
   const mm = Math.floor(initialSec/60), ss = Math.round(initialSec%60);
@@ -1809,7 +1919,7 @@ document.querySelectorAll(".keypad-grid button").forEach(btn=>{
     const disp = document.getElementById("keypad-value");
     const k = btn.dataset.k;
 
-    if(keypadCtx && keypadCtx.mode === "duration"){
+    if(keypadCtx && (keypadCtx.mode === "duration" || keypadCtx.mode === "duration_metric2")){
       if(k === "back"){
         keypadCtx.durationDigits = ("0" + keypadCtx.durationDigits).slice(0, -1);
       } else if(k !== ","){
@@ -1834,11 +1944,40 @@ document.querySelectorAll(".keypad-grid button").forEach(btn=>{
 document.getElementById("keypad-confirm").addEventListener("click", ()=>{
   if(!keypadCtx) return;
 
+  if(keypadCtx.mode === "duration_metric2"){
+    const digits = keypadCtx.durationDigits.padStart(4,"0");
+    const totalSec = parseInt(digits.slice(0,2),10)*60 + parseInt(digits.slice(2,4),10);
+    keypadCtx.setRef.reps = totalSec;
+    if(keypadCtx.isDraft){
+      if(draftCache[keypadCtx.ex.id] && draftCache[keypadCtx.ex.id][keypadCtx.idx]){
+        draftCache[keypadCtx.ex.id][keypadCtx.idx].reps = totalSec;
+      }
+    } else {
+      persist();
+    }
+    hideBackdrop("keypad-sheet");
+    keypadCtx = null;
+    renderSeance();
+    return;
+  }
+
   if(keypadCtx.mode === "duration"){
     const digits = keypadCtx.durationDigits.padStart(4,"0");
     const totalSec = parseInt(digits.slice(0,2),10)*60 + parseInt(digits.slice(2,4),10);
     const s = keypadCtx.setRef;
-    if(activeRest && activeRest.setRef === s){
+    if(keypadCtx.isDraft){
+      // Planning a rest time before the exercise has ever been started must survive
+      // a page reload, unlike ordinary draft edits — so materialize this set for real
+      // (still not "started") instead of leaving it in the ephemeral draft cache.
+      if(draftCache[keypadCtx.ex.id] && draftCache[keypadCtx.ex.id][keypadCtx.idx]){
+        draftCache[keypadCtx.ex.id][keypadCtx.idx].restPlannedSec = totalSec;
+      }
+      const w = currentWorkoutFilter==="ALL" ? findWorkoutContaining(keypadCtx.ex.id) : currentWorkoutFilter;
+      const realSession = materializeExercise(keypadCtx.ex.id, w);
+      const setsForEx = realSession.sets.filter(st=>st.exerciseId===keypadCtx.ex.id).sort((a,b)=>a.order-b.order);
+      const realSet = setsForEx[keypadCtx.idx];
+      if(realSet) realSet.restPlannedSec = totalSec;
+    } else if(activeRest && activeRest.setRef === s){
       // Editing while its rest is actively counting -> finalize it now with this value.
       state.restTimes[activeRest.exerciseId] = totalSec;
       s.restAfterSec = totalSec;
@@ -1862,6 +2001,7 @@ document.getElementById("keypad-confirm").addEventListener("click", ()=>{
   let num = parseFloat(raw);
   if(isNaN(num)) num = 0;
   if(keypadCtx.field==="reps") num = Math.round(num);
+  if(keypadCtx.field==="weight" && getWeightMode(keypadCtx.ex)==="level") num = Math.round(num);
   keypadCtx.setRef[keypadCtx.field] = num;
   if(keypadCtx.isDraft){
     draftCache[keypadCtx.ex.id][keypadCtx.idx][keypadCtx.field] = num;
@@ -1925,13 +2065,47 @@ function addExistingExerciseToCurrentWorkout(exId){
 
 function createAndAddExercise(name){
   if(!name) return;
-  const ex = { id: uid("ex"), name };
-  state.exercises.push(ex);
-  attachExerciseToCurrentView(ex.id);
-  persist();
-  hideBackdrop("add-exercise-sheet");
-  renderSeance();
+  openNewExerciseModal(name, (ex)=>{
+    state.exercises.push(ex);
+    attachExerciseToCurrentView(ex.id);
+    persist();
+    hideBackdrop("add-exercise-sheet");
+    renderSeance();
+  });
 }
+
+let newExerciseModalCtx = null;
+function openNewExerciseModal(name, onCreated){
+  newExerciseModalCtx = { onCreated };
+  document.getElementById("new-exercise-name-input").value = name || "";
+  document.querySelectorAll('#new-exercise-weight-mode button').forEach(b=> b.classList.toggle("active", b.dataset.value==="weight"));
+  document.querySelectorAll('#new-exercise-reps-mode button').forEach(b=> b.classList.toggle("active", b.dataset.value==="reps"));
+  showBackdrop("new-exercise-modal");
+}
+
+document.querySelectorAll('#new-exercise-weight-mode button, #new-exercise-reps-mode button').forEach(btn=>{
+  btn.addEventListener("click", ()=>{
+    btn.parentElement.querySelectorAll('button').forEach(b=> b.classList.toggle("active", b===btn));
+  });
+});
+
+document.getElementById("new-exercise-cancel").addEventListener("click", ()=>{
+  newExerciseModalCtx = null;
+  hideBackdrop("new-exercise-modal");
+});
+
+document.getElementById("new-exercise-ok").addEventListener("click", ()=>{
+  if(!newExerciseModalCtx) return;
+  const name = document.getElementById("new-exercise-name-input").value.trim();
+  if(!name) return;
+  const weightMode = document.querySelector('#new-exercise-weight-mode button.active').dataset.value;
+  const repsMode = document.querySelector('#new-exercise-reps-mode button.active').dataset.value;
+  const ex = { id: uid("ex"), name, weightMode, repsMode };
+  const cb = newExerciseModalCtx.onCreated;
+  newExerciseModalCtx = null;
+  hideBackdrop("new-exercise-modal");
+  if(cb) cb(ex);
+});
 
 function attachExerciseToCurrentView(exId){
   if(currentWorkoutFilter!=="ALL"){
@@ -2132,8 +2306,9 @@ function renderHistorique(){
     row.className = "history-row";
     const completedSets = s.sets.filter(x=>x.completed);
     const setCount = completedSets.length;
-    const totalWeight = completedSets.reduce((a,x)=>a+x.weight*x.reps, 0);
-    const totalReps = completedSets.reduce((a,x)=>a+x.reps, 0);
+    const standardSets = completedSets.filter(x=>isStandardExercise(getExercise(x.exerciseId)));
+    const totalWeight = standardSets.reduce((a,x)=>a+x.weight*x.reps, 0);
+    const totalReps = standardSets.reduce((a,x)=>a+x.reps, 0);
     const durSec = (new Date(s.endDate) - new Date(s.startDate))/1000;
     row.innerHTML = '<div><div class="hw-name">'+escapeHtml(s.workoutName)+'</div><div class="hw-meta">'+formatDurationMin(durSec)+' · '+setCount+' série'+(setCount>1?'s':'')+' · '+Math.round(totalWeight)+' '+state.settings.unit+' · '+totalReps+' reps</div></div><span class="chev">›</span>';
     row.addEventListener("click", ()=> openSessionDetail(s.id));
@@ -2162,8 +2337,9 @@ function openSessionDetail(sessionId){
 
   const completedSets = session.sets.filter(s=>s.completed);
   const setCount = completedSets.length;
-  const totalWeight = completedSets.reduce((a,x)=>a+x.weight*x.reps, 0);
-  const totalReps = completedSets.reduce((a,x)=>a+x.reps, 0);
+  const standardSets = completedSets.filter(x=>isStandardExercise(getExercise(x.exerciseId)));
+  const totalWeight = standardSets.reduce((a,x)=>a+x.weight*x.reps, 0);
+  const totalReps = standardSets.reduce((a,x)=>a+x.reps, 0);
   const durSec = (new Date(session.endDate) - new Date(session.startDate))/1000;
   const strip = document.createElement("div");
   strip.className = "summary-strip";
@@ -2191,7 +2367,7 @@ function openSessionDetail(sessionId){
     sets.forEach((s,i)=>{
       const line = document.createElement("div");
       line.className = "detail-set-line";
-      line.innerHTML = '<span>Série '+(i+1)+'</span><b>'+formatWeight(s.weight)+' × '+s.reps+'</b>';
+      line.innerHTML = '<span>Série '+(i+1)+'</span><b>'+formatMetric1(ex, s.weight)+' × '+formatMetric2(ex, s.reps)+'</b>';
       block.appendChild(line);
     });
     scroll.appendChild(block);
@@ -2235,7 +2411,7 @@ function openExerciseHistory(exId){
     sets.forEach((st,i)=>{
       const line = document.createElement("div");
       line.className = "detail-set-line";
-      line.innerHTML = '<span>Série '+(i+1)+'</span><b>'+formatWeight(st.weight)+' × '+st.reps+'</b>';
+      line.innerHTML = '<span>Série '+(i+1)+'</span><b>'+formatMetric1(ex, st.weight)+' × '+formatMetric2(ex, st.reps)+'</b>';
       block.appendChild(line);
     });
     scroll.appendChild(block);
@@ -2303,6 +2479,18 @@ function renderParametres(){
   exportRow.addEventListener("click", exportData);
   dataGroup.appendChild(exportRow);
 
+  const importRow = document.createElement("button");
+  importRow.className = "settings-action-row";
+  importRow.innerHTML = '<span class="lbl">Importer des données</span><span class="chev">›</span>';
+  importRow.addEventListener("click", ()=> document.getElementById("import-file-input").click());
+  dataGroup.appendChild(importRow);
+
+  const demoRow = document.createElement("button");
+  demoRow.className = "settings-action-row";
+  demoRow.innerHTML = '<span class="lbl">Charger les données de démo</span><span class="chev">›</span>';
+  demoRow.addEventListener("click", loadDemoData);
+  dataGroup.appendChild(demoRow);
+
   const exportLogRow = document.createElement("button");
   exportLogRow.className = "settings-action-row";
   const logCount = (state.debugLog || []).length;
@@ -2320,7 +2508,7 @@ function renderParametres(){
 
   const dataNote = document.createElement("div");
   dataNote.className = "settings-note";
-  dataNote.textContent = "L'export produit un fichier JSON contenant toutes tes séances, exercices et ton historique — pratique à partager pour analyse. Le journal de debug garde une trace des actions clés (et de toute erreur rencontrée) pour aider à comprendre un souci après coup. La réinitialisation efface tout et repart sur une base vide.";
+  dataNote.textContent = "L'export produit un fichier JSON contenant toutes tes séances, exercices et ton historique — pratique à partager pour analyse, ou à réimporter plus tard. Le journal de debug garde une trace des actions clés (et de toute erreur rencontrée) pour aider à comprendre un souci après coup. La réinitialisation efface tout et repart sur une base vide.";
   scroll.appendChild(dataNote);
 
   document.getElementById("sound-toggle").addEventListener("change", (e)=>{
@@ -2343,6 +2531,72 @@ function exportData(){
   a.click();
   document.body.removeChild(a);
   setTimeout(()=> URL.revokeObjectURL(url), 2000);
+}
+
+function showSimpleAlert(title, message){
+  openConfirm(title, message, ()=>{}, "OK");
+}
+
+document.getElementById("import-file-input").addEventListener("change", (e)=>{
+  const file = e.target.files && e.target.files[0];
+  e.target.value = ""; // reset so re-selecting the same file still fires "change"
+  if(!file) return;
+
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    let parsed;
+    try{
+      parsed = JSON.parse(reader.result);
+    }catch(err){
+      showSimpleAlert("Import impossible", "Ce fichier ne contient pas un JSON valide.");
+      return;
+    }
+    if(!parsed || !Array.isArray(parsed.workouts) || !Array.isArray(parsed.exercises) || !Array.isArray(parsed.sessions)){
+      showSimpleAlert("Import impossible", "Ce fichier ne correspond pas à un export Simple Workout valide.");
+      return;
+    }
+    openConfirm(
+      "Importer ces données",
+      "Cela remplacera toutes tes données actuelles (séances, exercices, historique) par le contenu de ce fichier. Cette action est irréversible.",
+      ()=>{
+        if(!Array.isArray(parsed.debugLog)) parsed.debugLog = [];
+        if(!parsed.settings) parsed.settings = { unit:"kg", sound:true, vibration:true };
+        if(!parsed.restTimes) parsed.restTimes = {};
+        state = parsed;
+        currentWorkoutFilter = (state.lastWorkoutId && getWorkout(state.lastWorkoutId)) ? state.lastWorkoutId : (state.workouts.length ? state.workouts[0].id : "ALL");
+        editMode = false;
+        routineSheetEditMode = false;
+        clearDraftCache();
+        activeRest = null;
+        clearInterval(restTicker);
+        restTicker = null;
+        persist();
+        switchTab(currentTab);
+      },
+      "Importer"
+    );
+  };
+  reader.onerror = ()=>{
+    showSimpleAlert("Import impossible", "Impossible de lire ce fichier.");
+  };
+  reader.readAsText(file);
+});
+
+function loadDemoData(){
+  openConfirm(
+    "Charger les données de démo",
+    "Cela remplacera toutes tes données actuelles par le jeu de données de démonstration (routines et historique d'exemple). Pense à exporter tes données avant si tu veux les garder. Cette action est irréversible.",
+    ()=>{
+      state = freshState();
+      currentWorkoutFilter = state.workouts.length ? state.workouts[0].id : "ALL";
+      editMode = false;
+      routineSheetEditMode = false;
+      clearDraftCache();
+      persist();
+      switchTab(currentTab);
+    },
+    "Charger la démo"
+  );
 }
 
 function exportDebugLog(){
