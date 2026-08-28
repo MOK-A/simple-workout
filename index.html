@@ -62,17 +62,19 @@
   #routine-selector-label{overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
   .routine-selector .chev{font-size:15px; color:var(--text-dim); margin-top:3px; flex-shrink:0;}
   .topbar-left-group{display:flex; align-items:center; gap:2px; min-width:0; flex:1;}
+  .topbar-right-group{display:flex; align-items:center; gap:16px;}
   .session-action-btn{
     flex-shrink:0; padding:9px 16px; border-radius:20px; font-size:14px; font-weight:700;
     background:var(--accent); color:#1a0e00; white-space:nowrap;
   }
   .session-action-btn.finish{background:var(--surface-3); color:var(--text);}
   .topbar-icon-btn{
-    width:36px; height:36px; display:flex; align-items:center; justify-content:center;
+    width:40px; height:40px; display:flex; align-items:center; justify-content:center;
     color:var(--text-dim); flex-shrink:0;
   }
-  .topbar-icon-btn svg{width:20px; height:20px;}
+  .topbar-icon-btn svg{width:21px; height:21px;}
   .topbar-icon-btn.active{color:var(--accent);}
+  .topbar-icon-btn.danger-icon{color:var(--red);}
   .back-btn{
     display:flex; align-items:center; gap:2px; font-size:17px; color:var(--blue);
     padding:4px 4px 4px 0; font-weight:400;
@@ -272,6 +274,19 @@
   }
   .detail-set-line b{color:var(--text); font-weight:600;}
   .detail-set-line .fail{color:var(--red);}
+  .hist-edit-wrap{background:var(--surface); border-radius:var(--radius); overflow:hidden; margin-bottom:6px;}
+  .hist-edit-row{
+    position:relative; display:grid; grid-template-columns:1fr 1fr;
+    align-items:center; gap:6px; padding:10px 12px;
+    background:var(--surface); border-bottom:1px solid var(--border);
+    touch-action:pan-y;
+  }
+  .set-row-outer:last-child .hist-edit-row{border-bottom:none;}
+  .hist-add-set-row{
+    display:flex; align-items:center; justify-content:center; gap:6px;
+    padding:12px; color:var(--accent); font-size:15px; font-weight:600;
+    background:var(--surface);
+  }
   .summary-strip{
     display:flex; gap:0; background:var(--surface); border-radius:var(--radius); padding:14px 0; margin-bottom:20px;
   }
@@ -490,6 +505,14 @@
   <div class="screen" id="screen-session-detail">
     <div class="topbar">
       <button class="back-btn" id="back-from-session-detail"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>Retour</button>
+      <div class="topbar-right-group">
+        <button class="topbar-icon-btn" id="session-detail-edit-btn" title="Modifier cette séance">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l4-1 10-10-3-3L5 16l-1 4z"/><path d="M14 6l3 3"/></svg>
+        </button>
+        <button class="topbar-icon-btn danger-icon" id="session-detail-delete-btn" title="Supprimer cette séance">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 20 7"/><path d="M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/></svg>
+        </button>
+      </div>
     </div>
     <div class="scroll-area no-tabbar-pad" id="session-detail-scroll"></div>
   </div>
@@ -498,6 +521,9 @@
   <div class="screen" id="screen-exercise-history">
     <div class="topbar">
       <button class="back-btn" id="back-from-exercise-history"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>Retour</button>
+      <button class="topbar-icon-btn" id="exercise-history-edit-btn" title="Modifier l'historique">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l4-1 10-10-3-3L5 16l-1 4z"/><path d="M14 6l3 3"/></svg>
+      </button>
     </div>
     <div class="scroll-area no-tabbar-pad" id="exercise-history-scroll"></div>
   </div>
@@ -1188,6 +1214,8 @@ let currentTab = "seance";
 let currentWorkoutFilter = null; // workout id, or "ALL"
 let editMode = false; // inline exercise reorder/remove mode on the Séance screen
 let routineSheetEditMode = false; // read-only by default; toggled by the pencil inside the routine sheet
+let sessionDetailEditMode = false; // read-only by default; toggled by the pencil in a past session's detail view
+let exerciseHistoryEditMode = false; // read-only by default; toggled by the pencil in an exercise's history view
 let currentHistorySessionId = null;
 let currentHistoryExerciseId = null;
 let revealedRowEl = null;
@@ -1204,6 +1232,12 @@ function switchTab(tab){
   document.getElementById("screen-seance").classList.toggle("active", tab==="seance");
   document.getElementById("screen-historique").classList.toggle("active", tab==="historique");
   document.getElementById("screen-parametres").classList.toggle("active", tab==="parametres");
+  // Any screen "pushed" on top (session detail, exercise history) must close when
+  // switching tabs — otherwise it stays visually stacked above the newly active tab.
+  popScreen("screen-session-detail");
+  popScreen("screen-exercise-history");
+  sessionDetailEditMode = false;
+  exerciseHistoryEditMode = false;
   if(tab==="seance") renderSeance();
   if(tab==="historique") renderHistorique();
   if(tab==="parametres") renderParametres();
@@ -2316,11 +2350,16 @@ function renderHistorique(){
   });
 }
 
-function openSessionDetail(sessionId){
+function openSessionDetail(sessionId, preserveEditMode){
+  if(!preserveEditMode) sessionDetailEditMode = false;
   currentHistorySessionId = sessionId;
   const session = state.sessions.find(s=>s.id===sessionId);
+  if(!session) return;
   const scroll = document.getElementById("session-detail-scroll");
   scroll.innerHTML = "";
+
+  const editBtn = document.getElementById("session-detail-edit-btn");
+  editBtn.classList.toggle("active", sessionDetailEditMode);
 
   const title = document.createElement("h1");
   title.style.fontSize = "22px";
@@ -2341,51 +2380,185 @@ function openSessionDetail(sessionId){
   const totalWeight = standardSets.reduce((a,x)=>a+x.weight*x.reps, 0);
   const totalReps = standardSets.reduce((a,x)=>a+x.reps, 0);
   const durSec = (new Date(session.endDate) - new Date(session.startDate))/1000;
-  const strip = document.createElement("div");
-  strip.className = "summary-strip";
-  strip.innerHTML =
-    '<div class="s"><b>'+exIds.length+'</b><span>exercices</span></div>'+
-    '<div class="s"><b>'+setCount+'</b><span>séries</span></div>'+
-    '<div class="s"><b>'+Math.round(durSec/60)+'</b><span>minutes</span></div>'+
-    '<div class="s"><b>'+Math.round(totalWeight)+'</b><span>'+state.settings.unit+'</span></div>'+
-    '<div class="s"><b>'+totalReps+'</b><span>reps</span></div>';
-  scroll.appendChild(strip);
+
+  if(!sessionDetailEditMode){
+    const strip = document.createElement("div");
+    strip.className = "summary-strip";
+    strip.innerHTML =
+      '<div class="s"><b>'+exIds.length+'</b><span>exercices</span></div>'+
+      '<div class="s"><b>'+setCount+'</b><span>séries</span></div>'+
+      '<div class="s"><b>'+Math.round(durSec/60)+'</b><span>minutes</span></div>'+
+      '<div class="s"><b>'+Math.round(totalWeight)+'</b><span>'+state.settings.unit+'</span></div>'+
+      '<div class="s"><b>'+totalReps+'</b><span>reps</span></div>';
+    scroll.appendChild(strip);
+  }
 
   exIds.forEach(exId=>{
     const ex = getExercise(exId);
     if(!ex) return;
     const sets = session.sets.filter(s=>s.exerciseId===exId && s.completed).sort((a,b)=>a.order-b.order);
-    if(!sets.length) return;
+    if(!sets.length && !sessionDetailEditMode) return;
     const block = document.createElement("div");
     block.className = "detail-ex-block";
     const nm = document.createElement("div");
     nm.className = "detail-ex-name";
     nm.textContent = ex.name;
-    nm.style.cursor = "pointer";
-    nm.addEventListener("click", ()=> openExerciseHistory(exId));
+    if(!sessionDetailEditMode){
+      nm.style.cursor = "pointer";
+      nm.addEventListener("click", ()=> openExerciseHistory(exId));
+    }
     block.appendChild(nm);
-    sets.forEach((s,i)=>{
-      const line = document.createElement("div");
-      line.className = "detail-set-line";
-      line.innerHTML = '<span>Série '+(i+1)+'</span><b>'+formatMetric1(ex, s.weight)+' × '+formatMetric2(ex, s.reps)+'</b>';
-      block.appendChild(line);
-    });
+
+    if(sessionDetailEditMode){
+      const wrap = document.createElement("div");
+      wrap.className = "hist-edit-wrap";
+      const hdr = document.createElement("div");
+      hdr.className = "sets-header-row";
+      hdr.style.gridTemplateColumns = "1fr 1fr";
+      hdr.innerHTML = '<span>'+metric1HeaderLabel(ex)+'</span><span>'+metric2HeaderLabel(ex)+'</span>';
+      wrap.appendChild(hdr);
+      sets.forEach(s=> wrap.appendChild(renderHistoricalSetRow(ex, s, session)));
+      const addBtn = document.createElement("div");
+      addBtn.className = "hist-add-set-row";
+      addBtn.textContent = "+ Ajouter une série";
+      addBtn.addEventListener("click", ()=>{
+        const last = sets[sets.length-1];
+        const newOrder = session.sets.filter(st=>st.exerciseId===exId).length;
+        session.sets.push({ id: uid("s"), exerciseId: exId, weight: last?last.weight:20, reps: last?last.reps:10, completed:true, order:newOrder });
+        persist();
+        openSessionDetail(sessionId, true);
+      });
+      wrap.appendChild(addBtn);
+      block.appendChild(wrap);
+    } else if(sets.length){
+      sets.forEach((s,i)=>{
+        const line = document.createElement("div");
+        line.className = "detail-set-line";
+        line.innerHTML = '<span>Série '+(i+1)+'</span><b>'+formatMetric1(ex, s.weight)+' × '+formatMetric2(ex, s.reps)+'</b>';
+        block.appendChild(line);
+      });
+    }
     scroll.appendChild(block);
   });
+
+  if(sessionDetailEditMode && exIds.length===0){
+    scroll.innerHTML += '<div class="empty-state">Aucun exercice enregistré dans cette séance.</div>';
+  }
 
   pushScreen("screen-session-detail");
 }
 document.getElementById("back-from-session-detail").addEventListener("click", ()=> popScreen("screen-session-detail"));
 
+document.getElementById("session-detail-edit-btn").addEventListener("click", ()=>{
+  sessionDetailEditMode = !sessionDetailEditMode;
+  openSessionDetail(currentHistorySessionId, true);
+});
+
+document.getElementById("session-detail-delete-btn").addEventListener("click", ()=>{
+  const session = state.sessions.find(s=>s.id===currentHistorySessionId);
+  if(!session) return;
+  openConfirm(
+    "Supprimer cette séance",
+    "Supprimer définitivement la séance « "+session.workoutName+" » du "+formatHistoryDate(session.startDate)+" ? Cette action est irréversible.",
+    ()=>{
+      state.sessions = state.sessions.filter(s=>s.id!==session.id);
+      persist();
+      popScreen("screen-session-detail");
+      sessionDetailEditMode = false;
+      renderHistorique();
+    }
+  );
+});
+
+function renderHistoricalSetRow(ex, s, session, onRefresh){
+  const refresh = onRefresh || (()=> openSessionDetail(session.id, true));
+  const outer = document.createElement("div");
+  outer.className = "set-row-outer";
+
+  const delBg = document.createElement("div");
+  delBg.className = "set-row-delete";
+  delBg.textContent = "Suppr.";
+  outer.appendChild(delBg);
+
+  const row = document.createElement("div");
+  row.className = "hist-edit-row";
+
+  const weightCell = buildStepperCell(ex, s.weight, "weight");
+  const repsCell = buildStepperCell(ex, s.reps, "reps");
+  row.appendChild(weightCell);
+  row.appendChild(repsCell);
+  outer.appendChild(row);
+
+  attachStepperEvents(weightCell, s, "weight", ex, false, null);
+  attachStepperEvents(repsCell, s, "reps", ex, false, null);
+  attachHistoricalSwipeDelete(outer, row, session, s, refresh);
+
+  return outer;
+}
+
+function attachHistoricalSwipeDelete(outerEl, rowEl, session, setRef, onRefresh){
+  const refresh = onRefresh || (()=> openSessionDetail(session.id, true));
+  let startX=0, startY=0, dx=0, dragging=false, axisLocked=null;
+  const REVEAL = -80;
+
+  rowEl.addEventListener("pointerdown", (e)=>{
+    if(e.target.closest(".stepper")) return;
+    startX = e.clientX; startY = e.clientY; dragging = true; axisLocked = null;
+    if(revealedRowEl && revealedRowEl!==rowEl) closeRevealedRow();
+  });
+  rowEl.addEventListener("pointermove", (e)=>{
+    if(!dragging) return;
+    const ddx = e.clientX - startX, ddy = e.clientY - startY;
+    if(axisLocked===null && (Math.abs(ddx)>8 || Math.abs(ddy)>8)){
+      axisLocked = Math.abs(ddx) > Math.abs(ddy) ? "x" : "y";
+    }
+    if(axisLocked==="x"){
+      dx = Math.max(REVEAL, Math.min(0, ddx + (revealedRowEl===rowEl? REVEAL:0)));
+      rowEl.style.transform = "translateX("+dx+"px)";
+    }
+  });
+  function endDrag(){
+    if(!dragging) return;
+    dragging = false;
+    if(axisLocked==="x"){
+      if(dx < REVEAL/2){
+        rowEl.style.transform = "translateX("+REVEAL+"px)";
+        revealedRowEl = rowEl;
+      } else {
+        rowEl.style.transform = "translateX(0)";
+        if(revealedRowEl===rowEl) revealedRowEl = null;
+      }
+    }
+  }
+  rowEl.addEventListener("pointerup", endDrag);
+  rowEl.addEventListener("pointercancel", endDrag);
+
+  outerEl.querySelector(".set-row-delete").addEventListener("click", ()=>{
+    const idx = session.sets.indexOf(setRef);
+    if(idx<0) return;
+    session.sets.splice(idx,1);
+    persist();
+    showUndoToast("Série supprimée", ()=>{
+      session.sets.splice(idx,0,setRef);
+      persist();
+      refresh();
+    });
+    refresh();
+  });
+}
+
 /* ============================================================
    EXERCISE HISTORY
    ============================================================ */
-function openExerciseHistory(exId){
+function openExerciseHistory(exId, preserveEditMode){
+  if(!preserveEditMode) exerciseHistoryEditMode = false;
   currentHistoryExerciseId = exId;
   const ex = getExercise(exId);
   if(!ex) return;
   const scroll = document.getElementById("exercise-history-scroll");
   scroll.innerHTML = "";
+
+  document.getElementById("exercise-history-edit-btn").classList.toggle("active", exerciseHistoryEditMode);
 
   const title = document.createElement("h1");
   title.style.cssText = "font-size:22px; margin:0 0 16px;";
@@ -2405,21 +2578,38 @@ function openExerciseHistory(exId){
     const dl = document.createElement("div");
     dl.className = "history-date-label";
     dl.style.margin = "0 0 8px";
-    dl.textContent = formatHistoryDate(s.startDate) + (formatHistoryDate(s.startDate)==="Aujourd'hui"||formatHistoryDate(s.startDate)==="Hier" ? "" : "");
+    dl.textContent = formatHistoryDate(s.startDate);
     block.appendChild(dl);
     const sets = s.sets.filter(st=>st.exerciseId===exId && st.completed).sort((a,b)=>a.order-b.order);
-    sets.forEach((st,i)=>{
-      const line = document.createElement("div");
-      line.className = "detail-set-line";
-      line.innerHTML = '<span>Série '+(i+1)+'</span><b>'+formatMetric1(ex, st.weight)+' × '+formatMetric2(ex, st.reps)+'</b>';
-      block.appendChild(line);
-    });
+
+    if(exerciseHistoryEditMode){
+      const wrap = document.createElement("div");
+      wrap.className = "hist-edit-wrap";
+      const hdr = document.createElement("div");
+      hdr.className = "sets-header-row";
+      hdr.style.gridTemplateColumns = "1fr 1fr";
+      hdr.innerHTML = '<span>'+metric1HeaderLabel(ex)+'</span><span>'+metric2HeaderLabel(ex)+'</span>';
+      wrap.appendChild(hdr);
+      sets.forEach(st=> wrap.appendChild(renderHistoricalSetRow(ex, st, s, ()=>openExerciseHistory(exId, true))));
+      block.appendChild(wrap);
+    } else {
+      sets.forEach((st,i)=>{
+        const line = document.createElement("div");
+        line.className = "detail-set-line";
+        line.innerHTML = '<span>Série '+(i+1)+'</span><b>'+formatMetric1(ex, st.weight)+' × '+formatMetric2(ex, st.reps)+'</b>';
+        block.appendChild(line);
+      });
+    }
     scroll.appendChild(block);
   });
 
   pushScreen("screen-exercise-history");
 }
 document.getElementById("back-from-exercise-history").addEventListener("click", ()=> popScreen("screen-exercise-history"));
+document.getElementById("exercise-history-edit-btn").addEventListener("click", ()=>{
+  exerciseHistoryEditMode = !exerciseHistoryEditMode;
+  openExerciseHistory(currentHistoryExerciseId, true);
+});
 
 /* ============================================================
    RENDER: PARAMETRES
