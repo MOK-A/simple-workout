@@ -94,8 +94,10 @@
     padding:4px 16px calc(24px + var(--tabbar-h) + var(--safe-b));
     scrollbar-width:none; -ms-overflow-style:none;
   }
+  /* The floating player overlays the list, so the séance list reserves exactly its
+     height at the bottom. Driven from JS since that height varies with content. */
+  #seance-scroll{padding-bottom:var(--seance-pad-bottom, calc(24px + var(--tabbar-h) + var(--safe-b)));}
   .scroll-area::-webkit-scrollbar{display:none; width:0; height:0;}
-  .scroll-area.no-tabbar-pad{padding-bottom:24px;}
 
   /* ---------- Tab bar ---------- */
   #tabbar{
@@ -210,6 +212,24 @@
     display:block; font-size:10px; color:var(--text-faint); opacity:.8; margin-top:1px;
   }
   .set-check-wrap{display:flex; align-items:center; justify-content:center;}
+  /* Data columns are pulled to the left so the effort marker gets breathing room. */
+  .set-row.with-effort, .sets-header-row.with-effort{
+    grid-template-columns:13px 1fr 0.85fr 0.66fr 0.48fr 28px 42px;
+    gap:3px;
+  }
+  /* Visually detach the effort marker from the round start/done button. */
+  .set-row.with-effort .set-effort{margin-left:10px;}
+  .sets-header-row.with-effort > span:last-child{padding-left:10px;}
+  .set-row.with-effort .set-effort-wrap, .sets-header-row.with-effort > span:last-child{
+    display:flex; align-items:center; justify-content:center;
+  }
+  .set-effort{
+    width:30px; height:30px; border-radius:8px; background:var(--surface-3);
+    display:flex; align-items:center; justify-content:center;
+    font-size:15px; font-weight:700; color:var(--text-faint); flex-shrink:0;
+  }
+  .set-effort.easy{background:rgba(50,215,75,.18); color:var(--green);}
+  .set-effort.fail{background:rgba(255,69,58,.18); color:var(--red);}
   .add-set-row{
     display:flex; align-items:center; justify-content:center; gap:6px;
     padding:12px; color:var(--accent); font-size:15px; font-weight:600;
@@ -302,6 +322,7 @@
   }
   .settings-row:last-child{border-bottom:none;}
   .settings-row .lbl{font-size:15.5px;}
+  .settings-value{font-size:14px; color:var(--text-faint);}
   .segmented{display:flex; background:var(--surface-3); border-radius:8px; padding:2px;}
   .segmented button{padding:6px 14px; font-size:14px; font-weight:600; border-radius:6px; color:var(--text-dim);}
   .segmented button.active{background:var(--accent); color:#1a0e00;}
@@ -442,6 +463,204 @@
   .keypad-grid button.disabled{opacity:.3; pointer-events:none;}
   .keypad-confirm{width:100%; background:var(--accent); color:#1a0e00; padding:14px; border-radius:12px; font-size:16px; font-weight:700;}
 
+  /* ---------- Player bar ---------- */
+  #control-hub{
+    background:var(--surface-2); border:1px solid var(--border);
+    border-radius:18px; padding:9px 12px 11px; margin:0 16px 10px; flex-shrink:0;
+  }
+  #control-hub.hidden{display:none !important;}
+  #control-hub.hub-floating{
+    position:absolute; left:12px; right:12px;
+    bottom:calc(var(--tabbar-h) + var(--safe-b) + 10px);
+    z-index:45; box-shadow:0 8px 26px rgba(0,0,0,.55); margin:0;
+  }
+  .hub-rest-data{display:none !important;}
+  .hub-topline{display:flex; align-items:flex-start; gap:8px;}
+  .hub-topline #session-banner-slot{flex:1; min-width:0;}
+  #control-hub .session-banner{
+    margin:0 0 4px; padding:0; background:none; border-radius:0; font-size:12.5px;
+  }
+  .hub-expand{
+    width:30px; height:30px; border-radius:8px; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    color:var(--text-faint); background:var(--surface-3);
+  }
+  .hub-topline{gap:6px;}
+
+  /* ---- Collapsed player: a slim pill that barely covers the list ---- */
+  #control-hub.hub-collapsed{
+    padding:0; border-radius:26px; cursor:pointer;
+    left:auto; right:12px; width:auto; min-width:0;
+  }
+  #control-hub.hub-collapsed .hub-topline,
+  #control-hub.hub-collapsed .hub-ex,
+  #control-hub.hub-collapsed .hub-upnext,
+  #control-hub.hub-collapsed .hub-sets,
+  #control-hub.hub-collapsed .hub-focus-actions,
+  #control-hub.hub-collapsed .hub-action-label,
+  #control-hub.hub-collapsed .hub-side-right{display:none !important;}
+  #control-hub.hub-collapsed .hub-controls{
+    display:flex; align-items:center; gap:10px; padding:7px 14px 7px 8px;
+  }
+  #control-hub.hub-collapsed .hub-play-btn{
+    width:44px; height:44px; font-size:14px; border-width:2px;
+  }
+  #control-hub.hub-collapsed .hub-play-btn svg{width:17px; height:17px; margin-left:2px;}
+  .hub-collapsed-label{
+    display:none; font-size:13px; font-weight:600; color:var(--text-dim);
+    white-space:nowrap; max-width:150px; overflow:hidden; text-overflow:ellipsis;
+  }
+  #control-hub.hub-collapsed .hub-collapsed-label{display:block;}
+
+  .hub-ex{text-align:center; margin-bottom:8px;}
+  .hub-ex-name{
+    font-size:17px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .hub-ex-name.active{color:var(--accent);}
+  .hub-ex-sub{
+    font-size:13.5px; color:var(--text-dim); font-variant-numeric:tabular-nums; margin-top:2px;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+
+  /* Symmetric side columns keep the play button centred; the arrow sits further right. */
+  .hub-controls{
+    display:grid; grid-template-columns:1fr 76px 1fr; align-items:center; gap:6px;
+  }
+  .hub-action-label{
+    font-size:12.5px; font-weight:600; color:var(--text-dim); text-align:right;
+    line-height:1.25; padding-right:6px;
+  }
+  .hub-action-label.go{color:var(--accent);}
+  .hub-action-label.rest{color:var(--blue);}
+  .hub-side-right{
+    display:flex; flex-direction:column; align-items:flex-end; justify-content:center;
+    gap:4px; padding-right:2px;
+  }
+  .hub-next-label{
+    font-size:11.5px; font-weight:600; color:var(--accent); text-align:right;
+    line-height:1.25; max-width:110px;
+  }
+  .hub-next-label:empty{display:none;}
+  .hub-nav{
+    width:48px; height:48px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    color:var(--text-faint); background:var(--surface-3);
+    transition:color .15s, background .15s;
+  }
+  .hub-nav.ready{color:var(--accent); background:var(--accent-dim);}
+  .hub-nav.disabled{opacity:.3; pointer-events:none;}
+
+  .hub-play-btn{
+    width:76px; height:76px; border-radius:50%; justify-self:center;
+    display:flex; align-items:center; justify-content:center;
+    font-size:22px; font-weight:800; font-variant-numeric:tabular-nums;
+    border:2px solid var(--text-faint); color:var(--text-faint); background:var(--surface-3);
+    transition:background .15s, border-color .15s, color .15s;
+  }
+  .hub-play-btn svg{width:30px; height:30px; margin-left:4px;}
+  .hub-play-btn.ready{border-color:var(--accent); color:var(--accent); background:var(--accent-dim);}
+  .hub-play-btn.running{background:var(--accent); border-color:var(--accent); color:#1a0e00;}
+  .hub-play-btn.resting{border-color:var(--blue); color:var(--blue); background:rgba(10,132,255,.14); font-size:21px;}
+  .hub-play-btn.resting.overtime{border-color:var(--accent); color:var(--accent); background:var(--accent-dim);}
+  .hub-play-btn.idle{border-color:var(--surface-3); color:var(--text-faint); background:var(--surface-3);}
+  .hub-play-btn.idle svg{opacity:.5;}
+
+  .hub-upnext{
+    margin-top:9px; padding-top:8px; border-top:1px solid var(--border);
+    font-size:12px; color:var(--text-faint);
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-align:center;
+  }
+  .hub-upnext b{color:var(--text-dim); font-weight:600;}
+  .hub-upnext.empty{display:none;}
+  .hub-sets{display:none;}
+  .hub-focus-actions{display:none;}
+
+  /* ---------- Focus (full-screen) mode ---------- */
+  #control-hub.hub-focus{
+    position:absolute; inset:0;
+    z-index:60; margin:0; border-radius:0; border:none;
+    background:var(--bg);
+    display:flex; flex-direction:column; justify-content:flex-start;
+    padding:calc(var(--safe-t) + 52px) 14px calc(var(--safe-b) + 12px);
+    overflow:hidden;
+  }
+  /* The tab bar is hidden while the player is full-screen. */
+  #app-shell.focus-mode #tabbar{display:none;}
+  #control-hub.hub-focus::-webkit-scrollbar{display:none;}
+  /* Focus layout: title on top, adjustable set list filling the middle,
+     controls anchored near the bottom where the thumb is. */
+  #control-hub.hub-focus .hub-topline{order:0;}
+  #control-hub.hub-focus .hub-ex{order:1; margin-bottom:12px;}
+  #control-hub.hub-focus .hub-sets{
+    display:block; order:2; flex:0 1 auto; min-height:0; overflow-y:auto;
+    margin:0 0 12px; scrollbar-width:none;
+  }
+  #control-hub.hub-focus .hub-sets::-webkit-scrollbar{display:none;}
+  #control-hub.hub-focus .hub-controls{order:3; margin-top:auto;}
+  #control-hub.hub-focus .hub-focus-actions{order:4;}
+  /* The "up next" recap duplicates the adjustable list here, so it is hidden. */
+  #control-hub.hub-focus .hub-upnext{display:none !important;}
+
+  /* Short slide-down/slide-in confirmation when the player moves to another exercise. */
+  #control-hub.hub-focus .hub-ex,
+  #control-hub.hub-focus .hub-sets{
+    transition:transform .18s ease, opacity .18s ease;
+  }
+  #control-hub.hub-focus.switching-out .hub-ex,
+  #control-hub.hub-focus.switching-out .hub-sets{
+    transform:translateY(38px); opacity:0;
+  }
+  #control-hub.hub-focus.switching-in .hub-ex,
+  #control-hub.hub-focus.switching-in .hub-sets{
+    transform:translateY(-24px); opacity:0; transition:none;
+  }
+
+  /* Bigger, easier-to-hit rows in focus mode. */
+  #control-hub.hub-focus .sets-header-row span{font-size:12px;}
+  #control-hub.hub-focus .set-row{padding:14px 10px; gap:6px;}
+  #control-hub.hub-focus .set-index{font-size:14px;}
+  #control-hub.hub-focus .stepper .val-btn .val{font-size:22px;}
+  #control-hub.hub-focus .stepper .val-btn .u{font-size:12px;}
+  #control-hub.hub-focus .stepper .nudge button{width:26px; height:21px; font-size:9px;}
+  #control-hub.hub-focus .set-prev, #control-hub.hub-focus .set-restafter{font-size:14px;}
+  #control-hub.hub-focus .set-prev-rest{font-size:11.5px;}
+  #control-hub.hub-focus .set-check{width:38px; height:38px; font-size:18px;}
+  #control-hub.hub-focus .set-check svg{width:15px; height:15px;}
+  #control-hub.hub-focus .set-effort{width:38px; height:38px; font-size:18px; border-radius:10px;}
+  #control-hub.hub-focus .add-set-row{padding:16px; font-size:18px;}
+  #control-hub.hub-focus .hub-focus-actions{
+    display:flex; justify-content:center; margin-top:18px;
+  }
+  .hub-focus-exit{
+    padding:13px 26px; border-radius:22px; font-size:14.5px; font-weight:700;
+    background:var(--surface-3); color:var(--text);
+  }
+  #control-hub.hub-focus .hub-topline{position:absolute; top:calc(var(--safe-t) + 14px); left:20px; right:20px;}
+  #control-hub.hub-focus .hub-ex{margin-bottom:26px;}
+  #control-hub.hub-focus .hub-ex-name{font-size:26px; letter-spacing:-0.02em; white-space:normal;}
+  #control-hub.hub-focus .hub-ex-sub{font-size:17px; margin-top:6px;}
+  #control-hub.hub-focus .hub-play-btn{width:112px; height:112px; font-size:30px;}
+  #control-hub.hub-focus .hub-play-btn svg{width:44px; height:44px;}
+  #control-hub.hub-focus .hub-controls{grid-template-columns:1fr 112px 1fr;}
+  #control-hub.hub-focus .hub-action-label{font-size:15px;}
+  #control-hub.hub-focus .hub-nav{width:60px; height:60px;}
+  #control-hub.hub-focus .hub-next-label{font-size:14px; max-width:150px;}
+  #control-hub.hub-focus .hub-nav svg{width:26px; height:26px;}
+  #control-hub.hub-focus .hub-upnext{
+    margin-top:28px; font-size:15px; white-space:normal; line-height:1.5; text-align:left;
+  }
+  .upnext-title{
+    font-size:12px; font-weight:700; color:var(--text-faint);
+    text-transform:uppercase; letter-spacing:.04em; margin-bottom:8px; text-align:center;
+  }
+  .upnext-list{display:flex; flex-direction:column; gap:2px;}
+  .upnext-row{
+    display:flex; justify-content:space-between; gap:12px;
+    font-size:14.5px; color:var(--text-faint);
+    padding:6px 10px; background:var(--surface); border-radius:8px;
+  }
+  .upnext-row b{color:var(--text-dim); font-weight:600; font-variant-numeric:tabular-nums;}
+
   /* ---------- Toast ---------- */
   #undo-toast{
     position:absolute; left:16px; right:16px; bottom:calc(var(--tabbar-h) + var(--safe-b) + 12px);
@@ -473,23 +692,47 @@
       </div>
       <button class="session-action-btn" id="session-action-btn">Démarrer la séance</button>
     </div>
-    <div id="rest-overlay" class="hidden">
-      <div class="ring" id="rest-ring">
-        <svg width="38" height="38" viewBox="0 0 38 38">
-          <circle cx="19" cy="19" r="16" fill="none" stroke="#2c2c2e" stroke-width="3"/>
-          <circle id="rest-ring-progress" cx="19" cy="19" r="16" fill="none" stroke="#0a84ff" stroke-width="3" stroke-linecap="round" stroke-dasharray="100.5" stroke-dashoffset="0"/>
-        </svg>
+    <div id="control-hub" class="hidden">
+      <div class="hub-topline">
+        <div id="session-banner-slot"></div>
+        <button class="hub-expand" id="hub-collapse-btn" aria-label="Réduire le lecteur">
+          <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <button class="hub-expand" id="hub-expand-btn" aria-label="Mode focus">
+          <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+        </button>
       </div>
-      <div class="label">
-        <div class="time-row">
-          <span class="time" id="rest-time">01:30</span>
-          <span class="planned" id="rest-planned"></span>
+      <div class="hub-ex">
+        <div class="hub-ex-name" id="hub-ex-name"></div>
+        <div class="hub-ex-sub" id="hub-ex-sub"></div>
+      </div>
+      <div class="hub-controls">
+        <div class="hub-action-label" id="hub-action-label"></div>
+        <button class="hub-play-btn" id="hub-play-btn"></button>
+        <div class="hub-collapsed-label" id="hub-collapsed-label"></div>
+        <div class="hub-side-right">
+          <div class="hub-next-label" id="hub-next-label"></div>
+          <button class="hub-nav" id="hub-next-btn" aria-label="Suivant">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><polygon points="5,6 12,16 19,6"/><rect x="5" y="17.6" width="14" height="2.4" rx="1"/></svg>
+          </button>
         </div>
-        <div class="sub" id="rest-sub">Repos · Développé couché</div>
       </div>
-      <button class="stop-btn" id="rest-stop-btn">Arrêter</button>
+      <div class="hub-sets" id="hub-sets"></div>
+      <div class="hub-upnext" id="hub-upnext"></div>
+      <div class="hub-focus-actions">
+        <button class="hub-focus-exit" id="hub-focus-exit-btn">↓ Revenir à la liste</button>
+      </div>
+      <div id="rest-overlay" class="hidden hub-rest-data">
+        <div class="ring" id="rest-ring">
+          <svg width="1" height="1" viewBox="0 0 38 38">
+            <circle cx="19" cy="19" r="16" fill="none" stroke="#2c2c2e" stroke-width="3"/>
+            <circle id="rest-ring-progress" cx="19" cy="19" r="16" fill="none" stroke="#0a84ff" stroke-width="3" stroke-linecap="round" stroke-dasharray="100.5" stroke-dashoffset="0"/>
+          </svg>
+        </div>
+        <span id="rest-time"></span><span id="rest-planned"></span><span id="rest-sub"></span>
+        <button id="rest-stop-btn">Arrêter</button>
+      </div>
     </div>
-    <div id="session-banner-slot"></div>
     <div class="scroll-area" id="seance-scroll">
       <div id="exercise-list"></div>
     </div>
@@ -514,7 +757,7 @@
         </button>
       </div>
     </div>
-    <div class="scroll-area no-tabbar-pad" id="session-detail-scroll"></div>
+    <div class="scroll-area" id="session-detail-scroll"></div>
   </div>
 
   <!-- ===================== EXERCISE HISTORY ===================== -->
@@ -525,7 +768,7 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l4-1 10-10-3-3L5 16l-1 4z"/><path d="M14 6l3 3"/></svg>
       </button>
     </div>
-    <div class="scroll-area no-tabbar-pad" id="exercise-history-scroll"></div>
+    <div class="scroll-area" id="exercise-history-scroll"></div>
   </div>
 
   <!-- ===================== PARAMETRES ===================== -->
@@ -751,7 +994,7 @@ function freshState(){
     workouts: workouts,
     sessions: sessions,
     restTimes: restTimes,
-    settings: { unit:"kg", sound:true, vibration:true },
+    settings: { unit:"kg", sound:true, vibration:true, effortButtons:false, nowBar:"bottom", playerBar:true },
     lastWorkoutId: workouts[0].id,
     currentSessionId: null,
     debugLog: [],
@@ -765,7 +1008,7 @@ function emptyState(){
     workouts: [],
     sessions: [],
     restTimes: {},
-    settings: { unit:"kg", sound:true, vibration:true },
+    settings: { unit:"kg", sound:true, vibration:true, effortButtons:false, nowBar:"bottom", playerBar:true },
     lastWorkoutId: null,
     currentSessionId: null,
     debugLog: [],
@@ -962,6 +1205,21 @@ function computeAverageLabel(sets, ex){
 // total duration, number of exercises, number of sets, total weight (volume), total reps.
 // Only sets belonging to "standard" exercises (weight+reps) count toward the weight/reps
 // totals — summing a "niveau" or a duration alongside real kg/reps wouldn't mean anything.
+// Tonnage (volume) grows fast: past 10 000 kg it reads much better in tonnes.
+// Returns the number and its unit separately, since some views show them in
+// distinct elements (big value + small caption).
+function formatVolumeParts(kg){
+  if(kg >= 10000){
+    const t = Math.round(kg/100)/10; // one decimal
+    return { value: String(t).replace(".", ","), unit: "t" };
+  }
+  return { value: String(Math.round(kg)), unit: state.settings.unit };
+}
+function formatVolume(kg){
+  const p = formatVolumeParts(kg);
+  return p.value + " " + p.unit;
+}
+
 function computeSessionsAverageStats(sessions){
   if(!sessions.length) return null;
   let totalDurSec = 0, totalEx = 0, totalSets = 0, totalWeight = 0, totalReps = 0;
@@ -989,7 +1247,7 @@ function computeSessionsAverageStats(sessions){
 
 function formatAverageStatsLabel(stats){
   if(!stats) return null;
-  return stats.avgDurMin + " min · " + stats.avgEx + " exercice" + (stats.avgEx>1?"s":"") + " · " + stats.avgSets + " série" + (stats.avgSets>1?"s":"") + " · " + stats.avgWeight + " " + state.settings.unit + " · " + stats.avgReps + " reps";
+  return stats.avgDurMin + " min · " + stats.avgEx + " exercice" + (stats.avgEx>1?"s":"") + " · " + stats.avgSets + " série" + (stats.avgSets>1?"s":"") + " · " + formatVolume(stats.avgWeight) + " · " + stats.avgReps + " reps";
 }
 
 function computeRoutineAverageLabel(workoutId){
@@ -1053,6 +1311,17 @@ function formatTimeHM(iso){
 function formatDurationMin(sec){
   return Math.max(1, Math.round(sec/60)) + " min";
 }
+// Session durations can run past an hour (or be left open overnight): mm:ss would
+// show nonsense like "1123:08", so anything over an hour switches to h:mm:ss.
+function formatDurationLong(sec){
+  sec = Math.max(0, Math.round(sec));
+  const h = Math.floor(sec/3600);
+  const m = Math.floor((sec%3600)/60);
+  const s = sec%60;
+  if(h > 0) return h + ":" + String(m).padStart(2,"0") + ":" + String(s).padStart(2,"0");
+  return String(m).padStart(2,"0") + ":" + String(s).padStart(2,"0");
+}
+
 function formatMMSS(sec){
   sec = Math.max(0, Math.round(sec));
   const m = Math.floor(sec/60), s = sec%60;
@@ -1103,6 +1372,7 @@ function materializeExercise(exerciseId, workoutIdForNaming){
     draft.forEach((d,i)=>{
       const newSet = { id: uid("s"), exerciseId, weight:d.weight, reps:d.reps, completed:false, order:i };
       if(typeof d.restPlannedSec === "number") newSet.restPlannedSec = d.restPlannedSec;
+      if(d.effort) newSet.effort = d.effort;
       session.sets.push(newSet);
     });
     delete draftCache[exerciseId];
@@ -1140,6 +1410,8 @@ function ensureExerciseActive(session, exerciseId){
 
 function cycleExerciseState(exerciseId, workoutIdForNaming){
   const session = materializeExercise(exerciseId, workoutIdForNaming);
+  hubFocusExId = exerciseId;
+  hubPinnedSetId = null;
   if(!session.exerciseState) session.exerciseState = {};
   const cur = session.exerciseState[exerciseId] || { status: "notStarted" };
   let next;
@@ -1202,7 +1474,8 @@ function ensureLiveChronoTicker(){
     document.querySelectorAll(".live-chrono[data-started-at]").forEach(el=>{
       const startedAt = parseInt(el.dataset.startedAt, 10);
       if(isNaN(startedAt)) return;
-      el.textContent = formatMMSS((Date.now() - startedAt) / 1000);
+      const secs = (Date.now() - startedAt) / 1000;
+      el.textContent = el.dataset.format === "long" ? formatDurationLong(secs) : formatMMSS(secs);
     });
   }, 1000);
 }
@@ -1215,6 +1488,10 @@ let currentWorkoutFilter = null; // workout id, or "ALL"
 let editMode = false; // inline exercise reorder/remove mode on the Séance screen
 let routineSheetEditMode = false; // read-only by default; toggled by the pencil inside the routine sheet
 let sessionDetailEditMode = false; // read-only by default; toggled by the pencil in a past session's detail view
+let hubCollapsed = false; // player reduced to a slim pill
+let hubFocusMode = false; // full-screen player view
+let hubPinnedSetId = null; // set whose rest is showing in the centre button
+let hubFocusExId = null; // exercise the hub is pinned to via its prev/next arrows
 let exerciseHistoryEditMode = false; // read-only by default; toggled by the pencil in an exercise's history view
 let currentHistorySessionId = null;
 let currentHistoryExerciseId = null;
@@ -1236,6 +1513,12 @@ function switchTab(tab){
   // switching tabs — otherwise it stays visually stacked above the newly active tab.
   popScreen("screen-session-detail");
   popScreen("screen-exercise-history");
+  // Leaving the tab must also drop full-screen focus mode. The class has to be
+  // cleared here directly: renderControlHub only runs on the Séance tab.
+  hubFocusMode = false;
+  const hubEl = document.getElementById("control-hub");
+  if(hubEl) hubEl.classList.remove("hub-focus");
+  document.getElementById("app-shell").classList.remove("focus-mode");
   sessionDetailEditMode = false;
   exerciseHistoryEditMode = false;
   if(tab==="seance") renderSeance();
@@ -1280,7 +1563,7 @@ function renderSeance(){
 
   if(active){
     const startedMs = new Date(active.startDate).getTime();
-    banner.innerHTML = '<div class="session-banner"><span class="dot"></span><span class="session-banner-text">Séance <b>'+escapeHtml(active.workoutName)+'</b> en cours depuis <b>'+formatTimeHM(active.startDate)+'</b></span><span class="session-duration live-chrono" data-started-at="'+startedMs+'">'+formatMMSS((Date.now()-startedMs)/1000)+'</span></div>';
+    banner.innerHTML = '<div class="session-banner"><span class="dot"></span><span class="session-banner-text">Séance <b>'+escapeHtml(active.workoutName)+'</b> en cours depuis <b>'+formatTimeHM(active.startDate)+'</b></span><span class="session-duration live-chrono" data-format="long" data-started-at="'+startedMs+'">'+formatDurationLong((Date.now()-startedMs)/1000)+'</span></div>';
   } else {
     banner.innerHTML = "";
   }
@@ -1379,6 +1662,7 @@ function renderSeance(){
   list.appendChild(addRow);
 
   refreshRestOverlay();
+  renderControlHub();
 
   if(editMode && isSpecificRoutine && currentWorkoutObj){
     enableExerciseDragReorder(list, currentWorkoutObj);
@@ -1454,7 +1738,8 @@ function renderExerciseBlock(ex, session){
 
     const hdr = document.createElement("div");
     hdr.className = "sets-header-row";
-    hdr.innerHTML = '<span></span><span>'+metric1HeaderLabel(ex)+'</span><span>'+metric2HeaderLabel(ex)+'</span><span>Avant</span><span>'+(usingDraft ? "Prévu" : "Repos")+'</span><span></span>';
+    hdr.innerHTML = '<span></span><span>'+metric1HeaderLabel(ex)+'</span><span>'+metric2HeaderLabel(ex)+'</span><span>Avant</span><span>'+(usingDraft ? "Prévu" : "Repos")+'</span><span></span>' + (state.settings.effortButtons ? '<span></span>' : '');
+    if(state.settings.effortButtons) hdr.classList.add("with-effort");
     wrap.appendChild(hdr);
 
     displaySets.forEach((s, idx)=>{
@@ -1542,6 +1827,30 @@ function renderSetRow(ex, s, idx, isDraft, session, lastPerf){
   check.innerHTML = setStatus === "done" ? "✓" : (setStatus === "active" ? "●" : PLAY_ICON_SVG);
   checkWrap.appendChild(check);
   row.appendChild(checkWrap);
+
+  // Optional effort marker column (Réglages -> "Marqueurs trop facile / échec").
+  // Tapping cycles: none -> trop facile -> échec -> none.
+  if(state.settings.effortButtons){
+    row.classList.add("with-effort");
+    const effortBtn = document.createElement("button");
+    const effort = s.effort || null;
+    effortBtn.className = "set-effort " + (effort || "none");
+    effortBtn.innerHTML = effort === "easy" ? "↑" : (effort === "fail" ? "✗" : "·");
+    effortBtn.title = effort === "easy" ? "Trop facile" : (effort === "fail" ? "Échec" : "Marquer l'effort");
+    effortBtn.addEventListener("click", (e)=>{
+      e.stopPropagation();
+      const next = !s.effort ? "easy" : (s.effort === "easy" ? "fail" : null);
+      if(isDraft){
+        s.effort = next;
+        if(draftCache[ex.id] && draftCache[ex.id][idx]) draftCache[ex.id][idx].effort = next;
+      } else {
+        s.effort = next;
+        persist();
+      }
+      renderSeance();
+    });
+    row.appendChild(effortBtn);
+  }
 
   outer.appendChild(row);
 
@@ -1663,6 +1972,8 @@ function getSetStatus(s, isDraft){
 function handleSetStatusTap(ex, s, idx, isDraft, activeSessionBefore){
   const w = currentWorkoutFilter==="ALL" ? findWorkoutContaining(ex.id) : currentWorkoutFilter;
   const session = materializeExercise(ex.id, w);
+  // Acting on a set from the list loads it into the player bar.
+  hubFocusExId = ex.id;
   const setsForEx = session.sets.filter(st=>st.exerciseId===ex.id).sort((a,b)=>a.order-b.order);
   const target = setsForEx[idx];
   if(!target) return;
@@ -1833,28 +2144,480 @@ function stopRest(){
 
 function tickRest(){
   refreshRestOverlay();
+  renderControlHub();
+}
+
+// ---- Now-playing bar -------------------------------------------------------
+// Two layouts are available (Réglages): a strip docked under the title bar, or a
+// floating bar above the tab bar. Both show the current exercise, the set being
+// worked on, the live rest countdown, and one big start/finish button.
+
+// Finds what the user is "on" right now: the active set if any, otherwise the
+// first not-yet-done set of the active (or first unfinished) exercise.
+function getCurrentSetContext(){
+  const session = getWorkingSession();
+  if(!session) return null;
+  const orderedExIds = [];
+  session.sets.forEach(st=>{ if(!orderedExIds.includes(st.exerciseId)) orderedExIds.push(st.exerciseId); });
+
+  // While a finished set's rest is counting, stay on that set.
+  if(hubPinnedSetId){
+    const pinned = session.sets.find(st=>st.id === hubPinnedSetId);
+    if(pinned){
+      const pEx = getExercise(pinned.exerciseId);
+      const pSets = session.sets.filter(st=>st.exerciseId===pinned.exerciseId).sort((a,b)=>a.order-b.order);
+      const pIdx = pSets.indexOf(pinned);
+      if(pEx && pIdx >= 0) return { session, ex: pEx, set: pinned, idx: pIdx, total: pSets.length };
+    }
+    hubPinnedSetId = null;
+  }
+
+  // An explicit choice made with the hub's arrow wins, as long as that
+  // exercise still has something left to do.
+  if(hubFocusExId){
+    const stillOpen = session.sets.some(st=>st.exerciseId===hubFocusExId && !st.completed);
+    if(stillOpen && getExercise(hubFocusExId)) {
+      const fSets = session.sets.filter(st=>st.exerciseId===hubFocusExId).sort((a,b)=>a.order-b.order);
+      let fIdx = fSets.findIndex(st=> st.startedAt && !st.completed);
+      if(fIdx < 0) fIdx = fSets.findIndex(st=> !st.completed);
+      if(fIdx >= 0) return { session, ex: getExercise(hubFocusExId), set: fSets[fIdx], idx: fIdx, total: fSets.length };
+    }
+    hubFocusExId = null;
+  }
+
+  // Prefer an exercise explicitly marked active.
+  let exId = orderedExIds.find(id=>{
+    const st = session.exerciseState && session.exerciseState[id];
+    return st && st.status === "active";
+  });
+  // Otherwise, any set already started.
+  if(!exId){
+    const started = session.sets.find(st=>st.startedAt && !st.completed);
+    if(started) exId = started.exerciseId;
+  }
+  // Otherwise, the first exercise that still has unfinished sets.
+  if(!exId){
+    exId = orderedExIds.find(id=> session.sets.some(st=>st.exerciseId===id && !st.completed));
+  }
+  if(!exId) return null;
+
+  const ex = getExercise(exId);
+  if(!ex) return null;
+  const sets = session.sets.filter(st=>st.exerciseId===exId).sort((a,b)=>a.order-b.order);
+  let idx = sets.findIndex(st=> st.startedAt && !st.completed);
+  if(idx < 0) idx = sets.findIndex(st=> !st.completed);
+  if(idx < 0) return null; // everything here is done -> hub goes idle
+  return { session, ex, set: sets[idx], idx, total: sets.length };
+}
+
+// Renders the single unified control hub: session line, current exercise/set,
+// live rest countdown and the big centered start/finish button — all in one bubble.
+// The hub stays pinned to a set while its rest is counting, so the countdown shows
+// in the centre button instead of jumping straight to the next set.
+// "Up next" is a one-liner in the bar; in focus mode it expands into the list of
+// every set still to do for the upcoming exercise.
+function renderUpNext(el, upcoming){
+  if(!upcoming){
+    el.classList.add("empty");
+    el.textContent = "";
+    return;
+  }
+  const upEx = getExercise(upcoming.exId);
+  const session = getWorkingSession();
+  const upSets = session ? session.sets.filter(st=>st.exerciseId===upcoming.exId).sort((a,b)=>a.order-b.order) : [];
+  el.classList.remove("empty");
+
+  if(!hubFocusMode){
+    let label = upEx ? upEx.name : "";
+    if(upcoming.set){
+      const upIdx = upSets.indexOf(upcoming.set);
+      if(upIdx >= 0) label += " · Série " + (upIdx+1) + "/" + upSets.length +
+        " · " + formatMetric1(upEx, upcoming.set.weight) + " " + metric1UnitLabel(upEx) +
+        " × " + formatMetric2(upEx, upcoming.set.reps);
+    } else {
+      label += " · à préparer";
+    }
+    el.innerHTML = "À suivre : <b>" + escapeHtml(label) + "</b>";
+    return;
+  }
+
+  const remaining = upSets.filter(st=>!st.completed);
+  let html = '<div class="upnext-title">À suivre — ' + escapeHtml(upEx ? upEx.name : "") + '</div>';
+  if(remaining.length){
+    html += '<div class="upnext-list">';
+    remaining.forEach(st=>{
+      const i = upSets.indexOf(st);
+      html += '<div class="upnext-row"><span>Série ' + (i+1) + '/' + upSets.length + '</span><b>' +
+        escapeHtml(formatMetric1(upEx, st.weight) + " " + metric1UnitLabel(upEx) + " × " + formatMetric2(upEx, st.reps)) +
+        '</b></div>';
+    });
+    html += '</div>';
+  } else {
+    html += '<div class="upnext-row"><span>Séries à préparer</span></div>';
+  }
+  el.innerHTML = html;
+}
+
+// In focus mode the current exercise's sets are shown in full, with the same
+// steppers, rest column and effort markers as the list view.
+function renderHubSets(ctx){
+  const wrap = document.getElementById("hub-sets");
+  if(!hubFocusMode || !ctx){ wrap.innerHTML = ""; return; }
+  const { ex, session } = ctx;
+  const sets = session.sets.filter(st=>st.exerciseId===ex.id).sort((a,b)=>a.order-b.order);
+  const lastPerf = getLastPerformance(ex.id, session.id);
+
+  wrap.innerHTML = "";
+  const inner = document.createElement("div");
+  inner.className = "sets-wrap";
+
+  const hdr = document.createElement("div");
+  hdr.className = "sets-header-row" + (state.settings.effortButtons ? " with-effort" : "");
+  hdr.innerHTML = '<span></span><span>'+metric1HeaderLabel(ex)+'</span><span>'+metric2HeaderLabel(ex)+
+    '</span><span>Avant</span><span>Repos</span><span></span>' + (state.settings.effortButtons ? '<span></span>' : '');
+  inner.appendChild(hdr);
+
+  sets.forEach((st, i)=> inner.appendChild(renderSetRow(ex, st, i, false, session, lastPerf)));
+
+  const addRow = document.createElement("div");
+  addRow.className = "add-set-row";
+  addRow.textContent = "+";
+  addRow.addEventListener("click", ()=> handleAddSet(ex.id));
+  inner.appendChild(addRow);
+
+  wrap.appendChild(inner);
+}
+
+function exitHubFocus(){
+  if(!hubFocusMode) return;
+  hubFocusMode = false;
+  renderControlHub();
+}
+
+// Keeps the séance list scrollable all the way past the floating player: the list
+// reserves exactly the bar's height at the bottom. Docked ("Haut") or hidden bars
+// sit in the flow, so the normal padding applies.
+function syncSeanceBottomPadding(){
+  const scroll = document.getElementById("seance-scroll");
+  const hub = document.getElementById("control-hub");
+  if(!scroll || !hub) return;
+  const floating = hub.classList.contains("hub-floating") && !hub.classList.contains("hidden") && !hubFocusMode;
+  if(!floating){
+    scroll.style.removeProperty("--seance-pad-bottom");
+    return;
+  }
+  requestAnimationFrame(()=>{
+    // The state may have changed since this frame was queued (bar moved to the top,
+    // turned off, focus mode opened), so re-check before applying the measurement.
+    const stillFloating = hub.classList.contains("hub-floating")
+      && !hub.classList.contains("hidden") && !hubFocusMode;
+    if(!stillFloating){
+      scroll.style.removeProperty("--seance-pad-bottom");
+      return;
+    }
+    const h = hub.offsetHeight || 0;
+    if(!h) return;
+    scroll.style.setProperty("--seance-pad-bottom",
+      "calc(" + Math.round(h) + "px + var(--tabbar-h) + var(--safe-b) + 34px)");
+  });
+}
+
+function renderControlHub(){
+  const hub = document.getElementById("control-hub");
+  const nameEl = document.getElementById("hub-ex-name");
+  const subEl = document.getElementById("hub-ex-sub");
+  const btn = document.getElementById("hub-play-btn");
+  const nextBtn = document.getElementById("hub-next-btn");
+  const actionEl = document.getElementById("hub-action-label");
+  const upnextEl = document.getElementById("hub-upnext");
+  const nextLabelEl = document.getElementById("hub-next-label");
+
+  if(state.settings.playerBar === false){
+    hub.classList.add("hidden");
+    hub.classList.remove("hub-focus", "hub-floating");
+    document.getElementById("app-shell").classList.remove("focus-mode");
+    syncSeanceBottomPadding();
+    return;
+  }
+  hub.classList.remove("hidden");
+  hub.classList.toggle("hub-focus", hubFocusMode);
+  hub.classList.toggle("hub-collapsed", hubCollapsed && !hubFocusMode);
+  document.getElementById("app-shell").classList.toggle("focus-mode", hubFocusMode);
+  syncSeanceBottomPadding();
+  const expandBtn = document.getElementById("hub-expand-btn");
+  expandBtn.title = hubFocusMode ? "Revenir à la liste" : "Mode focus";
+  expandBtn.innerHTML = hubFocusMode
+    ? '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" y1="10" x2="21" y2="3"/><line x1="3" y1="21" x2="10" y2="14"/></svg>'
+    : '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>';
+  hub.classList.toggle("hub-floating", !hubFocusMode && (state.settings && state.settings.nowBar) !== "top");
+
+  const ctx = getCurrentSetContext();
+  renderHubSets(ctx);
+
+  // What the arrow would move to — announced so the button is never a surprise.
+  const fromId = activeRest && activeRest.setRef ? activeRest.setRef.id : (ctx ? ctx.set.id : null);
+  const upcoming = findNextIncompleteSet(fromId);
+  renderUpNext(upnextEl, upcoming);
+
+  // --- Resting: countdown inside the button, press to stop it. ----------------
+  if(activeRest){
+    const elapsed = (Date.now() - activeRest.startTs)/1000;
+    const remaining = activeRest.targetSec - elapsed;
+    const overtime = remaining < 0;
+    nameEl.textContent = activeRest.exerciseName;
+    nameEl.classList.remove("active");
+    subEl.textContent = overtime
+      ? "Repos dépassé · prévu " + formatMMSS(activeRest.targetSec)
+      : "Repos en cours · prévu " + formatMMSS(activeRest.targetSec);
+    actionEl.className = "hub-action-label rest";
+    actionEl.textContent = "Appuie pour arrêter le repos";
+    btn.className = "hub-play-btn resting" + (overtime ? " overtime" : "");
+    btn.textContent = overtime ? formatMMSS(elapsed) : formatMMSS(remaining);
+    btn.onclick = (e)=>{ e.stopPropagation(); stopRest(); };
+    nextBtn.classList.toggle("disabled", !upcoming);
+    nextBtn.classList.toggle("ready", !!upcoming);
+    nextLabelEl.textContent = upcoming ? "Appuie pour passer à la série suivante" : "";
+    nextBtn.onclick = ()=> hubGoToNextSet();
+    syncCollapsedLabel();
+    return;
+  }
+
+  // --- Nothing to act on. ------------------------------------------------------
+  if(!ctx){
+    const active = getActiveSession();
+    nameEl.textContent = active ? "Séance terminée ?" : "Prêt à démarrer";
+    nameEl.classList.remove("active");
+    subEl.textContent = active ? "Toutes les séries sont faites" : "Aucune série en cours";
+    actionEl.className = "hub-action-label" + (active ? "" : " go");
+    actionEl.textContent = active ? "Rien à démarrer" : "Démarrer la séance";
+    btn.className = "hub-play-btn " + (active ? "idle" : "ready");
+    btn.innerHTML = PLAY_ICON_SVG;
+    btn.onclick = active ? null : (e)=>{ e.stopPropagation(); hubStartFirstThing(); };
+    nextBtn.classList.add("disabled");
+    nextBtn.classList.remove("ready");
+    nextLabelEl.textContent = "";
+    syncCollapsedLabel();
+    return;
+  }
+
+  // --- A set is waiting, or running. -------------------------------------------
+  const { ex, set, idx, total } = ctx;
+  const exState = getExerciseState(ctx.session, ex.id);
+  const setStatus = getSetStatus(set, false);
+
+  nameEl.textContent = ex.name;
+  nameEl.classList.toggle("active", exState.status === "active");
+  subEl.textContent = "Série " + (idx+1) + "/" + total + " · " +
+    formatMetric1(ex, set.weight) + " " + metric1UnitLabel(ex) + " × " +
+    formatMetric2(ex, set.reps) + (getRepsMode(ex)==="duration" ? "" : " " + metric2UnitLabel(ex));
+
+  if(setStatus === "active"){
+    actionEl.className = "hub-action-label go";
+    actionEl.textContent = "Série en cours — appuie pour la terminer";
+    btn.className = "hub-play-btn running";
+    btn.innerHTML = "■";
+  } else if(setStatus === "done"){
+    actionEl.className = "hub-action-label";
+    actionEl.textContent = "Série terminée — passe à la suivante ›";
+    btn.className = "hub-play-btn idle";
+    btn.innerHTML = "✓";
+  } else {
+    actionEl.className = "hub-action-label go";
+    actionEl.textContent = "Démarrer la série " + (idx+1);
+    btn.className = "hub-play-btn ready";
+    btn.innerHTML = PLAY_ICON_SVG;
+  }
+
+  btn.onclick = (setStatus === "done") ? null : (e)=>{
+    e.stopPropagation();
+    hubPinnedSetId = (setStatus === "active") ? set.id : null;
+    handleSetStatusTap(ex, set, idx, false, ctx.session);
+  };
+
+  const canAdvance = (setStatus === "done") && !!upcoming;
+  nextBtn.classList.toggle("disabled", !canAdvance);
+  nextBtn.classList.toggle("ready", canAdvance);
+  nextLabelEl.textContent = canAdvance ? "Appuie pour passer à la série suivante" : "";
+  nextBtn.onclick = ()=> hubGoToNextSet();
+  syncCollapsedLabel();
+}
+
+// The slim pill shows a one-line summary of whatever the full bar is displaying.
+function syncCollapsedLabel(){
+  const el = document.getElementById("hub-collapsed-label");
+  if(!el) return;
+  const name = document.getElementById("hub-ex-name").textContent;
+  const sub = document.getElementById("hub-ex-sub").textContent;
+  const shortSub = (sub.match(/Série \d+\/\d+/) || [])[0] || (activeRest ? "Repos" : "");
+  el.textContent = shortSub ? (name + " · " + shortSub) : name;
+}
+
+document.getElementById("hub-focus-exit-btn").addEventListener("click", (e)=>{
+  e.stopPropagation();
+  exitHubFocus();
+});
+document.getElementById("hub-collapse-btn").addEventListener("click", (e)=>{
+  e.stopPropagation();
+  hubCollapsed = true;
+  renderControlHub();
+});
+document.getElementById("control-hub").addEventListener("click", (e)=>{
+  // The collapsed pill is one big "restore" target, except for its play button.
+  if(!hubCollapsed || hubFocusMode) return;
+  if(e.target.closest("#hub-play-btn")) return;
+  hubCollapsed = false;
+  renderControlHub();
+});
+document.getElementById("hub-expand-btn").addEventListener("click", (e)=>{
+  e.stopPropagation();
+  hubFocusMode = !hubFocusMode;
+  if(hubFocusMode) hubCollapsed = false;
+  renderControlHub();
+});
+
+// Starts the session, its first exercise and its first set in one press.
+// First press only starts the session clock and puts the first exercise on deck —
+// it does not start a set. The next press starts that set.
+function hubStartFirstThing(){
+  const list = hubExerciseList();
+  if(!list.length) return;
+  const exId = list[0];
+  const w = currentWorkoutFilter === "ALL" ? findWorkoutContaining(exId) : currentWorkoutFilter;
+  const session = materializeExercise(exId, w);
+  beginSessionIfNeeded(session);
+  hubPinnedSetId = null;
+  hubFocusExId = exId;
+  persist();
+  renderSeance();
+}
+
+function hubExerciseList(){
+  if(currentWorkoutFilter !== "ALL"){
+    const w = getWorkout(currentWorkoutFilter);
+    if(w) return w.exerciseIds.slice();
+  }
+  const session = getWorkingSession();
+  const ids = [];
+  if(session) session.sets.forEach(st=>{ if(!ids.includes(st.exerciseId)) ids.push(st.exerciseId); });
+  return ids;
+}
+
+// Walks the routine in order and returns the first set that still needs doing,
+// skipping past the given set id. Materializes exercises as needed.
+function findNextIncompleteSet(afterSetId){
+  const session = getWorkingSession();
+  if(!session) return null;
+  const list = hubExerciseList();
+  let seen = !afterSetId;
+  for(const exId of list){
+    const sets = session.sets.filter(st=>st.exerciseId===exId).sort((a,b)=>a.order-b.order);
+    for(const st of sets){
+      if(!seen){ if(st.id === afterSetId) seen = true; continue; }
+      if(!st.completed) return { exId, set: st };
+    }
+    // An exercise with no rows yet is a valid "next" target once we're past the marker.
+    if(seen && sets.length === 0) return { exId, set: null };
+  }
+  return null;
+}
+
+// When every set of an exercise is done and we move on, its chrono must stop —
+// otherwise it keeps running in the background for the rest of the session.
+function finishExerciseIfComplete(session, exerciseId){
+  if(!session || !exerciseId || !session.exerciseState) return;
+  const st = session.exerciseState[exerciseId];
+  if(!st || st.status !== "active") return;
+  const sets = session.sets.filter(x=>x.exerciseId===exerciseId);
+  if(!sets.length || sets.some(x=>!x.completed)) return;
+  const durationSec = Math.round((Date.now() - st.startedAt) / 1000);
+  session.exerciseState[exerciseId] = { status:"done", startedAt: st.startedAt, doneAt: Date.now(), durationSec };
+  logEvent("exercise_done", { exercise: (getExercise(exerciseId)||{}).name, durationSec, auto:true });
+}
+
+function hubGoToNextSet(){
+  const ctx = getCurrentSetContext();
+  const fromId = activeRest && activeRest.setRef ? activeRest.setRef.id : (ctx ? ctx.set.id : null);
+  const leavingExId = activeRest ? activeRest.exerciseId : (ctx ? ctx.ex.id : null);
+  if(activeRest) stopRest();
+  const next = findNextIncompleteSet(fromId);
+  hubPinnedSetId = null;
+  const session = getWorkingSession();
+  const changingExercise = !!next && next.exId !== leavingExId;
+
+  if(leavingExId && (!next || changingExercise)){
+    finishExerciseIfComplete(session, leavingExId);
+    persist();
+  }
+  if(!next){ renderSeance(); return; }
+
+  const apply = ()=>{
+    hubFocusExId = next.exId;
+    const w = currentWorkoutFilter === "ALL" ? findWorkoutContaining(next.exId) : currentWorkoutFilter;
+    const sess = materializeExercise(next.exId, w);
+
+    // Staying inside the same exercise: chain straight into the next set.
+    // Changing exercise: just present it, don't start it for the user.
+    if(!changingExercise){
+      const sets = sess.sets.filter(st=>st.exerciseId===next.exId).sort((a,b)=>a.order-b.order);
+      const target = sets.find(st=>!st.completed);
+      if(target && !target.startedAt){
+        const idx = sets.indexOf(target);
+        handleSetStatusTap(getExercise(next.exId), target, idx, false, sess);
+        return;
+      }
+    }
+    persist();
+    renderSeance();
+    if(hubFocusMode){
+      // scrollIntoView would drag the full-screen container itself (it scrolls even
+      // with overflow:hidden), pushing the title under the header. Reset instead.
+      const h = document.getElementById("control-hub");
+      if(h) h.scrollTop = 0;
+      const sets = document.getElementById("hub-sets");
+      if(sets) sets.scrollTop = 0;
+    } else {
+      const block = document.querySelector('.exercise-block[data-exercise-id="'+next.exId+'"]');
+      if(block && block.scrollIntoView) block.scrollIntoView({ behavior:"smooth", block:"start" });
+    }
+  };
+
+  // In focus mode, changing exercise gets a brief slide so the switch is felt.
+  const hub = document.getElementById("control-hub");
+  if(hubFocusMode && changingExercise && hub){
+    hub.classList.add("switching-out");
+    setTimeout(()=>{
+      hub.classList.remove("switching-out");
+      hub.classList.add("switching-in");
+      apply();
+      requestAnimationFrame(()=>{
+        const h = document.getElementById("control-hub");
+        if(h) h.classList.remove("switching-in");
+      });
+    }, 300);
+    return;
+  }
+  apply();
 }
 
 function refreshRestOverlay(){
   const overlay = document.getElementById("rest-overlay");
+  const stopBtn = document.getElementById("rest-stop-btn");
   if(!activeRest){
     overlay.classList.add("hidden");
+    if(stopBtn) stopBtn.classList.add("hidden");
     return;
   }
   overlay.classList.remove("hidden");
+  if(stopBtn) stopBtn.classList.remove("hidden");
   const elapsed = (Date.now() - activeRest.startTs)/1000;
   const remaining = activeRest.targetSec - elapsed;
   const overtime = remaining < 0;
   overlay.classList.toggle("overtime", overtime);
-  if(overtime){
-    document.getElementById("rest-time").textContent = formatMMSS(elapsed);
-    document.getElementById("rest-planned").textContent = "prévu " + formatMMSS(activeRest.targetSec);
-    document.getElementById("rest-sub").textContent = "Repos · " + activeRest.exerciseName;
-  } else {
-    document.getElementById("rest-time").textContent = formatMMSS(remaining);
-    document.getElementById("rest-planned").textContent = "prévu " + formatMMSS(activeRest.targetSec);
-    document.getElementById("rest-sub").textContent = "Repos · " + activeRest.exerciseName;
-  }
+  document.getElementById("rest-time").textContent = overtime ? formatMMSS(elapsed) : formatMMSS(remaining);
+  document.getElementById("rest-planned").textContent = overtime
+    ? "dépassé · prévu " + formatMMSS(activeRest.targetSec)
+    : "repos · prévu " + formatMMSS(activeRest.targetSec);
+  document.getElementById("rest-sub").textContent = "Repos · " + activeRest.exerciseName;
 
   const circumference = 2*Math.PI*16;
   const ratio = overtime ? 1 : Math.max(0, Math.min(1, elapsed/activeRest.targetSec));
@@ -1873,28 +2636,95 @@ function refreshRestOverlay(){
     }
   }
 
-  if(!overtime && remaining<=0.3 && !activeRest._pinged){
-    activeRest._pinged = true;
-    pingEndOfRest();
+  // Countdown cues: a light bip on each of the last 10 seconds, then a stronger
+  // double bip right when the rest is over. Guarded so each only fires once.
+  // Skipped entirely when the target is 0 (no rest history yet -> instant overtime).
+  if(activeRest.targetSec > 0){
+    if(remaining > 0 && remaining <= 10){
+      const secLeft = Math.ceil(remaining);
+      if(activeRest._lastWarnSec !== secLeft){
+        activeRest._lastWarnSec = secLeft;
+        pingRestWarning();
+      }
+    }
+    if(remaining <= 0 && !activeRest._pinged){
+      activeRest._pinged = true;
+      pingEndOfRest();
+    }
   }
 }
 
+/* ============================================================
+   AUDIO
+   iOS requires a single AudioContext created/resumed from a real user
+   gesture — creating a fresh one at rest-end (no gesture) silently fails,
+   which is why sound never played. We create one lazily and unlock it on
+   the first touch anywhere in the app.
+   ============================================================ */
+let audioCtx = null;
+function getAudioCtx(){
+  if(!audioCtx){
+    try{
+      audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+    }catch(e){ return null; }
+  }
+  if(audioCtx.state === "suspended"){
+    try{ audioCtx.resume(); }catch(e){}
+  }
+  return audioCtx;
+}
+
+function unlockAudio(){
+  const ctx = getAudioCtx();
+  if(!ctx) return;
+  // Play a silent buffer: this is what actually flips iOS out of its locked state.
+  try{
+    const buf = ctx.createBuffer(1, 1, 22050);
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    src.connect(ctx.destination);
+    src.start(0);
+  }catch(e){}
+}
+document.addEventListener("touchstart", unlockAudio, { once:true });
+document.addEventListener("click", unlockAudio, { once:true });
+
+function playBeep(freq, durationSec, volume){
+  if(!state.settings.sound) return;
+  const ctx = getAudioCtx();
+  if(!ctx) return;
+  try{
+    const o = ctx.createOscillator(); const g = ctx.createGain();
+    o.type = "sine";
+    o.frequency.value = freq;
+    const t0 = ctx.currentTime;
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(volume, t0+0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0+durationSec);
+    o.connect(g); g.connect(ctx.destination);
+    o.start(t0); o.stop(t0+durationSec+0.05);
+  }catch(e){}
+}
+
+function tryVibrate(pattern){
+  // Note: iOS Safari does not implement the Vibration API at all, so this is
+  // a no-op on iPhone. Kept for Android/other browsers where it does work.
+  try{
+    if(state.settings.vibration && navigator.vibrate) navigator.vibrate(pattern);
+  }catch(e){}
+}
+
+// Light warning bip, played each of the last ~10 seconds before the rest ends.
+function pingRestWarning(){
+  playBeep(660, 0.12, 0.06);
+  tryVibrate(60);
+}
+
+// Stronger, more marked bip when the rest is actually over.
 function pingEndOfRest(){
-  try{
-    if(state.settings.vibration && navigator.vibrate) navigator.vibrate(200);
-  }catch(e){}
-  try{
-    if(state.settings.sound){
-      const ctx = new (window.AudioContext||window.webkitAudioContext)();
-      const o = ctx.createOscillator(); const g = ctx.createGain();
-      o.type="sine"; o.frequency.value=880;
-      g.gain.setValueAtTime(0.0001, ctx.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.12, ctx.currentTime+0.02);
-      g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime+0.35);
-      o.connect(g); g.connect(ctx.destination);
-      o.start(); o.stop(ctx.currentTime+0.4);
-    }
-  }catch(e){}
+  tryVibrate([200, 90, 200]);
+  playBeep(950, 0.30, 0.16);
+  setTimeout(()=> playBeep(950, 0.30, 0.16), 260);
 }
 
 document.getElementById("rest-stop-btn").addEventListener("click", stopRest);
@@ -1907,7 +2737,7 @@ function openKeypad(scrubberEl, setRef, field, ex, isDraft, idx){
   const mode = isMetric1 ? getWeightMode(ex) : getRepsMode(ex);
 
   if(field === "reps" && mode === "duration"){
-    keypadCtx = { mode: "duration_metric2", scrubberEl, setRef, field, ex, isDraft, idx };
+    keypadCtx = { mode: "duration_metric2", scrubberEl, setRef, field, ex, isDraft, idx, pristine: true };
     const initialSec = setRef[field] || 0;
     const mm = Math.floor(initialSec/60), ss = Math.round(initialSec%60);
     keypadCtx.durationDigits = String(mm).padStart(2,"0") + String(ss).padStart(2,"0");
@@ -1918,7 +2748,7 @@ function openKeypad(scrubberEl, setRef, field, ex, isDraft, idx){
     return;
   }
 
-  keypadCtx = { mode: "decimal", scrubberEl, setRef, field, ex, isDraft, idx };
+  keypadCtx = { mode: "decimal", scrubberEl, setRef, field, ex, isDraft, idx, pristine: true };
   const allowComma = (field==="weight" && mode==="weight");
   document.getElementById("keypad-unit").textContent = isMetric1 ? metric1UnitLabel(ex) : metric2UnitLabel(ex);
   const initVal = isMetric1 ? formatMetric1(ex, setRef[field]) : formatMetric2(ex, setRef[field]);
@@ -1936,7 +2766,7 @@ function formatDurationDigits(digits){
 // finalizes it immediately; once the set is done, it corrects the recorded value;
 // before the set is done, it pre-sets the planned target for its upcoming rest.
 function openRestKeypad(ex, s, isDraft, idx){
-  keypadCtx = { mode: "duration", setRef: s, ex, isDraft: !!isDraft, idx };
+  keypadCtx = { mode: "duration", setRef: s, ex, isDraft: !!isDraft, idx, pristine: true };
   const initialSec = typeof s.restAfterSec === "number" ? s.restAfterSec
     : (typeof s.restPlannedSec === "number" ? s.restPlannedSec : 0);
   const mm = Math.floor(initialSec/60), ss = Math.round(initialSec%60);
@@ -1957,7 +2787,14 @@ document.querySelectorAll(".keypad-grid button").forEach(btn=>{
       if(k === "back"){
         keypadCtx.durationDigits = ("0" + keypadCtx.durationDigits).slice(0, -1);
       } else if(k !== ","){
-        keypadCtx.durationDigits = (keypadCtx.durationDigits + k).slice(-4);
+        // First keystroke replaces the pre-filled value instead of appending to it,
+        // so typing a fresh duration doesn't get mixed with the old one.
+        if(keypadCtx.pristine){
+          keypadCtx.durationDigits = "000" + k;
+          keypadCtx.pristine = false;
+        } else {
+          keypadCtx.durationDigits = (keypadCtx.durationDigits + k).slice(-4);
+        }
       }
       disp.textContent = formatDurationDigits(keypadCtx.durationDigits);
       return;
@@ -1966,10 +2803,20 @@ document.querySelectorAll(".keypad-grid button").forEach(btn=>{
     let cur = disp.textContent;
     if(k==="back"){
       cur = cur.length>1 ? cur.slice(0,-1) : "0";
+      if(keypadCtx) keypadCtx.pristine = false;
     } else if(k===","){
+      if(keypadCtx && keypadCtx.pristine){ cur = "0"; keypadCtx.pristine = false; }
       if(!cur.includes(",")) cur = cur + ",";
     } else {
-      if(cur==="0") cur = k; else cur = cur + k;
+      // Same rule for numbers: the first digit typed clears whatever was pre-filled.
+      if(keypadCtx && keypadCtx.pristine){
+        cur = k;
+        keypadCtx.pristine = false;
+      } else if(cur==="0"){
+        cur = k;
+      } else {
+        cur = cur + k;
+      }
     }
     disp.textContent = cur;
   });
@@ -2321,7 +3168,7 @@ function renderHistorique(){
       '<div class="s"><b>'+globalStats.avgEx+'</b><span>exercices</span></div>'+
       '<div class="s"><b>'+globalStats.avgSets+'</b><span>séries</span></div>'+
       '<div class="s"><b>'+globalStats.avgDurMin+'</b><span>minutes</span></div>'+
-      '<div class="s"><b>'+globalStats.avgWeight+'</b><span>'+state.settings.unit+'</span></div>'+
+      '<div class="s"><b>'+formatVolumeParts(globalStats.avgWeight).value+'</b><span>volume '+formatVolumeParts(globalStats.avgWeight).unit+'</span></div>'+
       '<div class="s"><b>'+globalStats.avgReps+'</b><span>reps</span></div>';
     scroll.appendChild(strip);
   }
@@ -2344,7 +3191,7 @@ function renderHistorique(){
     const totalWeight = standardSets.reduce((a,x)=>a+x.weight*x.reps, 0);
     const totalReps = standardSets.reduce((a,x)=>a+x.reps, 0);
     const durSec = (new Date(s.endDate) - new Date(s.startDate))/1000;
-    row.innerHTML = '<div><div class="hw-name">'+escapeHtml(s.workoutName)+'</div><div class="hw-meta">'+formatDurationMin(durSec)+' · '+setCount+' série'+(setCount>1?'s':'')+' · '+Math.round(totalWeight)+' '+state.settings.unit+' · '+totalReps+' reps</div></div><span class="chev">›</span>';
+    row.innerHTML = '<div><div class="hw-name">'+escapeHtml(s.workoutName)+'</div><div class="hw-meta">'+formatDurationMin(durSec)+' · '+setCount+' série'+(setCount>1?'s':'')+' · '+formatVolume(totalWeight)+' · '+totalReps+' reps</div></div><span class="chev">›</span>';
     row.addEventListener("click", ()=> openSessionDetail(s.id));
     scroll.appendChild(row);
   });
@@ -2388,7 +3235,7 @@ function openSessionDetail(sessionId, preserveEditMode){
       '<div class="s"><b>'+exIds.length+'</b><span>exercices</span></div>'+
       '<div class="s"><b>'+setCount+'</b><span>séries</span></div>'+
       '<div class="s"><b>'+Math.round(durSec/60)+'</b><span>minutes</span></div>'+
-      '<div class="s"><b>'+Math.round(totalWeight)+'</b><span>'+state.settings.unit+'</span></div>'+
+      '<div class="s"><b>'+formatVolumeParts(totalWeight).value+'</b><span>volume '+formatVolumeParts(totalWeight).unit+'</span></div>'+
       '<div class="s"><b>'+totalReps+'</b><span>reps</span></div>';
     scroll.appendChild(strip);
   }
@@ -2652,26 +3499,67 @@ function renderParametres(){
     '<label class="switch"><input type="checkbox" id="vibration-toggle" '+(state.settings.vibration?"checked":"")+'><span class="slider"></span></label>';
   group.appendChild(vibRow);
 
+  const playerRow = document.createElement("div");
+  playerRow.className = "settings-row";
+  playerRow.innerHTML = '<span class="lbl">Barre de lecture</span>'+
+    '<label class="switch"><input type="checkbox" id="player-toggle" '+(state.settings.playerBar!==false?"checked":"")+'><span class="slider"></span></label>';
+  group.appendChild(playerRow);
+
+  const nowBarRow = document.createElement("div");
+  nowBarRow.className = "settings-row";
+  nowBarRow.innerHTML = '<span class="lbl">Position du bandeau</span>';
+  const nbSeg = document.createElement("div");
+  nbSeg.className = "segmented";
+  [["top","Haut"],["bottom","Bas"]].forEach(([val,label])=>{
+    const b = document.createElement("button");
+    b.textContent = label;
+    b.className = ((state.settings.nowBar||"bottom")===val) ? "active" : "";
+    b.addEventListener("click", ()=>{
+      state.settings.nowBar = val;
+      persist();
+      renderParametres();
+    });
+    nbSeg.appendChild(b);
+  });
+  nowBarRow.appendChild(nbSeg);
+  if(state.settings.playerBar !== false) group.appendChild(nowBarRow);
+
+  const effortRow = document.createElement("div");
+  effortRow.className = "settings-row";
+  effortRow.innerHTML = '<span class="lbl">Marqueurs trop facile / échec</span>'+
+    '<label class="switch"><input type="checkbox" id="effort-toggle" '+(state.settings.effortButtons?"checked":"")+'><span class="slider"></span></label>';
+  group.appendChild(effortRow);
+
   scroll.appendChild(group);
 
   const note = document.createElement("div");
   note.className = "settings-note";
-  note.textContent = "Le minuteur de repos continue de tourner tant que l'application reste ouverte. Selon l'appareil et le navigateur, le son et la vibration peuvent être limités en arrière-plan.";
+  note.textContent = "Le minuteur de repos continue de tourner tant que l'application reste ouverte. Selon l'appareil et le navigateur, le son et la vibration peuvent être limités en arrière-plan. Les marqueurs ajoutent une colonne sur chaque série : touche-la pour la marquer « trop facile » (↑) ou « échec » (✗).";
   scroll.appendChild(note);
+
+  const autoNote = document.createElement("div");
+  autoNote.className = "settings-note";
+  autoNote.style.marginBottom = "10px";
+  autoNote.innerHTML = "<b>Tes séances sont déjà sauvegardées automatiquement</b> sur cet appareil, sans rien faire. Ce qui suit sert uniquement à changer d'appareil ou à garder une copie de sécurité en dehors du téléphone.";
+  scroll.appendChild(autoNote);
 
   const dataGroup = document.createElement("div");
   dataGroup.className = "settings-group";
-  dataGroup.style.marginTop = "22px";
+
+  const lastBackupRow = document.createElement("div");
+  lastBackupRow.className = "settings-row";
+  lastBackupRow.innerHTML = '<span class="lbl">Dernière copie de sécurité</span><span class="settings-value">'+formatLastBackupLabel()+'</span>';
+  dataGroup.appendChild(lastBackupRow);
 
   const exportRow = document.createElement("button");
   exportRow.className = "settings-action-row";
-  exportRow.innerHTML = '<span class="lbl">Exporter les données</span><span class="chev">›</span>';
+  exportRow.innerHTML = '<span class="lbl">Faire une copie de sécurité</span><span class="chev">›</span>';
   exportRow.addEventListener("click", exportData);
   dataGroup.appendChild(exportRow);
 
   const importRow = document.createElement("button");
   importRow.className = "settings-action-row";
-  importRow.innerHTML = '<span class="lbl">Importer des données</span><span class="chev">›</span>';
+  importRow.innerHTML = '<span class="lbl">Restaurer une copie de sécurité</span><span class="chev">›</span>';
   importRow.addEventListener("click", ()=> document.getElementById("import-file-input").click());
   dataGroup.appendChild(importRow);
 
@@ -2698,11 +3586,20 @@ function renderParametres(){
 
   const dataNote = document.createElement("div");
   dataNote.className = "settings-note";
-  dataNote.textContent = "L'export produit un fichier JSON contenant toutes tes séances, exercices et ton historique — pratique à partager pour analyse, ou à réimporter plus tard. Le journal de debug garde une trace des actions clés (et de toute erreur rencontrée) pour aider à comprendre un souci après coup. La réinitialisation efface tout et repart sur une base vide.";
+  dataNote.textContent = "La copie de sécurité est un fichier JSON avec toutes tes séances, exercices et ton historique — à garder de côté (mail, cloud...) ou à me partager pour analyse. \"Restaurer\" remplace toutes les données actuelles par le contenu d'un fichier choisi. Le journal de debug garde une trace des actions clés (et de toute erreur rencontrée) pour aider à comprendre un souci après coup. La réinitialisation efface tout et repart sur une base vide.";
   scroll.appendChild(dataNote);
 
   document.getElementById("sound-toggle").addEventListener("change", (e)=>{
     state.settings.sound = e.target.checked; persist();
+  });
+  document.getElementById("player-toggle").addEventListener("change", (e)=>{
+    state.settings.playerBar = e.target.checked;
+    if(!e.target.checked) hubFocusMode = false;
+    persist();
+    renderParametres();
+  });
+  document.getElementById("effort-toggle").addEventListener("change", (e)=>{
+    state.settings.effortButtons = e.target.checked; persist();
   });
   document.getElementById("vibration-toggle").addEventListener("change", (e)=>{
     state.settings.vibration = e.target.checked; persist();
@@ -2710,6 +3607,8 @@ function renderParametres(){
 }
 
 function exportData(){
+  state.lastBackupAt = new Date().toISOString();
+  persist();
   const json = JSON.stringify(state, null, 2);
   const blob = new Blob([json], { type: "application/json" });
   const url = URL.createObjectURL(blob);
@@ -2721,6 +3620,16 @@ function exportData(){
   a.click();
   document.body.removeChild(a);
   setTimeout(()=> URL.revokeObjectURL(url), 2000);
+  if(currentTab === "parametres") renderParametres();
+}
+
+function formatLastBackupLabel(){
+  if(!state.lastBackupAt) return "jamais";
+  const d = new Date(state.lastBackupAt);
+  const daysAgo = Math.floor((Date.now() - d.getTime()) / 86400000);
+  if(daysAgo <= 0) return "aujourd'hui à " + formatTimeHM(state.lastBackupAt);
+  if(daysAgo === 1) return "hier";
+  return "il y a " + daysAgo + " jours";
 }
 
 function showSimpleAlert(title, message){
