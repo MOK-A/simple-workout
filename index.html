@@ -94,9 +94,8 @@
     padding:4px 16px calc(24px + var(--tabbar-h) + var(--safe-b));
     scrollbar-width:none; -ms-overflow-style:none;
   }
-  /* The floating player overlays the list, so the séance list reserves exactly its
-     height at the bottom. Driven from JS since that height varies with content. */
-  #seance-scroll{padding-bottom:var(--seance-pad-bottom, calc(24px + var(--tabbar-h) + var(--safe-b)));}
+  /* Spacer appended after the exercise list so the floating player never hides it. */
+  #hub-spacer{flex-shrink:0; width:100%;}
   .scroll-area::-webkit-scrollbar{display:none; width:0; height:0;}
 
   /* ---------- Tab bar ---------- */
@@ -490,8 +489,8 @@
   /* ---- Collapsed player: a slim pill that barely covers the list ---- */
   #control-hub.hub-collapsed{
     padding:0; border-radius:26px; cursor:pointer;
-    left:auto; right:12px; width:auto; min-width:0;
   }
+  #control-hub.hub-collapsed .hub-controls{justify-content:flex-start;}
   #control-hub.hub-collapsed .hub-topline,
   #control-hub.hub-collapsed .hub-ex,
   #control-hub.hub-collapsed .hub-upnext,
@@ -2297,28 +2296,37 @@ function exitHubFocus(){
 // Keeps the séance list scrollable all the way past the floating player: the list
 // reserves exactly the bar's height at the bottom. Docked ("Haut") or hidden bars
 // sit in the flow, so the normal padding applies.
+// A CSS padding proved unreliable here, so the list ends with a real spacer block
+// sized to the floating player. It is part of the flow, so nothing can hide behind it.
 function syncSeanceBottomPadding(){
-  const scroll = document.getElementById("seance-scroll");
+  const list = document.getElementById("exercise-list");
   const hub = document.getElementById("control-hub");
-  if(!scroll || !hub) return;
-  const floating = hub.classList.contains("hub-floating") && !hub.classList.contains("hidden") && !hubFocusMode;
+  if(!list || !hub) return;
+
+  let spacer = document.getElementById("hub-spacer");
+  const floating = hub.classList.contains("hub-floating")
+    && !hub.classList.contains("hidden") && !hubFocusMode;
+
   if(!floating){
-    scroll.style.removeProperty("--seance-pad-bottom");
+    if(spacer) spacer.remove();
     return;
   }
+  if(!spacer){
+    spacer = document.createElement("div");
+    spacer.id = "hub-spacer";
+    spacer.setAttribute("aria-hidden", "true");
+  }
+  if(spacer.parentNode !== list) list.appendChild(spacer);
+  // Keep it last, even after a re-render appended new rows.
+  if(list.lastElementChild !== spacer) list.appendChild(spacer);
+
   requestAnimationFrame(()=>{
-    // The state may have changed since this frame was queued (bar moved to the top,
-    // turned off, focus mode opened), so re-check before applying the measurement.
     const stillFloating = hub.classList.contains("hub-floating")
       && !hub.classList.contains("hidden") && !hubFocusMode;
-    if(!stillFloating){
-      scroll.style.removeProperty("--seance-pad-bottom");
-      return;
-    }
-    const h = hub.offsetHeight || 0;
-    if(!h) return;
-    scroll.style.setProperty("--seance-pad-bottom",
-      "calc(" + Math.round(h) + "px + var(--tabbar-h) + var(--safe-b) + 34px)");
+    const sp = document.getElementById("hub-spacer");
+    if(!sp) return;
+    if(!stillFloating){ sp.remove(); return; }
+    sp.style.height = Math.round((hub.offsetHeight || 120) + 24) + "px";
   });
 }
 
@@ -2343,13 +2351,14 @@ function renderControlHub(){
   hub.classList.toggle("hub-focus", hubFocusMode);
   hub.classList.toggle("hub-collapsed", hubCollapsed && !hubFocusMode);
   document.getElementById("app-shell").classList.toggle("focus-mode", hubFocusMode);
-  syncSeanceBottomPadding();
   const expandBtn = document.getElementById("hub-expand-btn");
   expandBtn.title = hubFocusMode ? "Revenir à la liste" : "Mode focus";
   expandBtn.innerHTML = hubFocusMode
     ? '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" y1="10" x2="21" y2="3"/><line x1="3" y1="21" x2="10" y2="14"/></svg>'
     : '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>';
   hub.classList.toggle("hub-floating", !hubFocusMode && (state.settings && state.settings.nowBar) !== "top");
+  // Must run after the floating class is settled, otherwise it reads the previous state.
+  syncSeanceBottomPadding();
 
   const ctx = getCurrentSetContext();
   renderHubSets(ctx);
@@ -2458,7 +2467,12 @@ document.getElementById("hub-focus-exit-btn").addEventListener("click", (e)=>{
 });
 document.getElementById("hub-collapse-btn").addEventListener("click", (e)=>{
   e.stopPropagation();
-  hubCollapsed = true;
+  // Steps down one size at a time: full screen -> bar -> pill.
+  if(hubFocusMode){
+    hubFocusMode = false;
+  } else {
+    hubCollapsed = true;
+  }
   renderControlHub();
 });
 document.getElementById("control-hub").addEventListener("click", (e)=>{
