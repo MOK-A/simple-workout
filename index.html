@@ -207,6 +207,10 @@
   .set-restafter.planned{color:var(--text-dim); font-style:italic;}
   .set-restafter.live{color:var(--blue); font-weight:700; font-style:normal;}
   .set-restafter.live.overtime-live{color:var(--accent);}
+  .set-live-chrono{
+    display:block; font-size:11px; font-weight:700; color:var(--accent);
+    font-variant-numeric:tabular-nums; margin-top:2px;
+  }
   .set-prev-rest{
     display:block; font-size:10px; color:var(--text-faint); opacity:.8; margin-top:1px;
   }
@@ -285,6 +289,19 @@
     padding:60px 20px; text-align:center; color:var(--text-faint); font-size:14.5px; line-height:1.6;
   }
 
+  .machine-card{
+    background:var(--surface); border-radius:var(--radius); padding:14px 16px; margin-bottom:20px;
+  }
+  .machine-card .mc-head{
+    display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:6px;
+  }
+  .machine-card .mc-title{
+    font-size:11.5px; font-weight:700; color:var(--text-faint);
+    text-transform:uppercase; letter-spacing:.04em;
+  }
+  .machine-card .mc-edit{font-size:13.5px; font-weight:600; color:var(--accent);}
+  .machine-card .mc-value{font-size:15.5px; color:var(--text); line-height:1.45; white-space:pre-wrap;}
+  .machine-card .mc-value.empty{color:var(--text-faint); font-style:italic;}
   .detail-ex-block{margin-bottom:22px;}
   .detail-ex-name{font-size:16px; font-weight:700; margin-bottom:6px;}
   .detail-set-line{
@@ -320,6 +337,10 @@
     border-bottom:1px solid var(--border); min-height:24px;
   }
   .settings-row:last-child{border-bottom:none;}
+  .settings-row.disabled-row{opacity:.45;}
+  .settings-inline-note{
+    padding:0 16px 12px; margin-top:-4px; font-size:12.5px; color:var(--text-faint); line-height:1.4;
+  }
   .settings-row .lbl{font-size:15.5px;}
   .settings-value{font-size:14px; color:var(--text-faint);}
   .segmented{display:flex; background:var(--surface-3); border-radius:8px; padding:2px;}
@@ -580,9 +601,10 @@
     z-index:60; margin:0; border-radius:0; border:none;
     background:var(--bg);
     display:flex; flex-direction:column; justify-content:flex-start;
-    padding:calc(var(--safe-t) + 52px) 14px calc(var(--safe-b) + 12px);
-    overflow:hidden;
+    padding:calc(var(--safe-t) + 64px) 14px calc(var(--safe-b) + 14px);
+    overflow-y:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none;
   }
+  #control-hub.hub-focus::-webkit-scrollbar{display:none;}
   /* The tab bar is hidden while the player is full-screen. */
   #app-shell.focus-mode #tabbar{display:none;}
   #control-hub.hub-focus::-webkit-scrollbar{display:none;}
@@ -591,11 +613,18 @@
   #control-hub.hub-focus .hub-topline{order:0;}
   #control-hub.hub-focus .hub-ex{order:1; margin-bottom:12px;}
   #control-hub.hub-focus .hub-sets{
-    display:block; order:2; flex:0 1 auto; min-height:0; overflow-y:auto;
-    margin:0 0 12px; scrollbar-width:none;
+    display:block; order:2; flex:0 0 auto; margin:0 0 12px;
   }
   #control-hub.hub-focus .hub-sets::-webkit-scrollbar{display:none;}
-  #control-hub.hub-focus .hub-controls{order:3; margin-top:auto;}
+  #control-hub.hub-focus .hub-controls{
+    order:3; margin-top:auto; position:sticky; bottom:0;
+    background:var(--bg); padding-top:10px;
+  }
+  .hub-rest-total{
+    display:none; text-align:center; font-size:12.5px; color:var(--text-faint);
+    font-variant-numeric:tabular-nums; margin-top:8px;
+  }
+  #control-hub.hub-focus .hub-rest-total.show{display:block;}
   #control-hub.hub-focus .hub-focus-actions{order:4;}
   /* The "up next" recap duplicates the adjustable list here, so it is hidden. */
   #control-hub.hub-focus .hub-upnext{display:none !important;}
@@ -716,6 +745,7 @@
           </button>
         </div>
       </div>
+      <div class="hub-rest-total" id="hub-rest-total"></div>
       <div class="hub-sets" id="hub-sets"></div>
       <div class="hub-upnext" id="hub-upnext"></div>
       <div class="hub-focus-actions">
@@ -1619,7 +1649,7 @@ function renderSeance(){
           ex.name = val; persist(); renderSeance();
         }),
         onDuplicate: ()=>{
-          const copy = { id: uid("ex"), name: ex.name+" copie", weightMode: ex.weightMode, repsMode: ex.repsMode };
+          const copy = { id: uid("ex"), name: ex.name+" copie", weightMode: ex.weightMode, repsMode: ex.repsMode, machineNote: ex.machineNote };
           state.exercises.push(copy);
           const idx = currentWorkoutObj.exerciseIds.indexOf(ex.id);
           currentWorkoutObj.exerciseIds.splice(idx+1, 0, copy.id);
@@ -1639,7 +1669,7 @@ function renderSeance(){
           ex.name = val; persist(); renderSeance();
         }),
         onDuplicate: ()=>{
-          const copy = { id: uid("ex"), name: ex.name+" copie", weightMode: ex.weightMode, repsMode: ex.repsMode };
+          const copy = { id: uid("ex"), name: ex.name+" copie", weightMode: ex.weightMode, repsMode: ex.repsMode, machineNote: ex.machineNote };
           state.exercises.push(copy);
           persist(); renderSeance();
         },
@@ -1793,7 +1823,17 @@ function renderSetRow(ex, s, idx, isDraft, session, lastPerf){
 
   const restEl = document.createElement("div");
   restEl.className = "set-restafter";
-  if(!isDraft){
+  const setRunning = !isDraft && s.startedAt && !s.completed;
+
+  if(setRunning){
+    // Set in progress: this slot shows the live duration of the set itself.
+    restEl.dataset.setId = s.id;
+    const chip = document.createElement("span");
+    chip.className = "set-live-chrono live-chrono";
+    chip.dataset.startedAt = String(s.startedAt);
+    chip.textContent = formatMMSS((Date.now() - s.startedAt)/1000);
+    restEl.appendChild(chip);
+  } else if(!isDraft){
     restEl.dataset.setId = s.id;
     if(typeof s.restAfterSec === "number"){
       restEl.textContent = formatMMSS(s.restAfterSec);
@@ -1811,11 +1851,14 @@ function renderSetRow(ex, s, idx, isDraft, session, lastPerf){
       restEl.textContent = "—";
     }
   }
-  restEl.style.cursor = "pointer";
-  restEl.addEventListener("click", (e)=>{
-    e.stopPropagation();
-    openRestKeypad(ex, s, isDraft, idx);
-  });
+
+  if(!setRunning){
+    restEl.style.cursor = "pointer";
+    restEl.addEventListener("click", (e)=>{
+      e.stopPropagation();
+      openRestKeypad(ex, s, isDraft, idx);
+    });
+  }
   row.appendChild(restEl);
 
   const checkWrap = document.createElement("div");
@@ -2362,6 +2405,10 @@ function renderControlHub(){
 
   const ctx = getCurrentSetContext();
   renderHubSets(ctx);
+  if(!activeRest){
+    const totalEl = document.getElementById("hub-rest-total");
+    if(totalEl){ totalEl.classList.remove("show"); totalEl.textContent = ""; }
+  }
 
   // What the arrow would move to — announced so the button is never a surprise.
   const fromId = activeRest && activeRest.setRef ? activeRest.setRef.id : (ctx ? ctx.set.id : null);
@@ -2387,6 +2434,11 @@ function renderControlHub(){
     nextBtn.classList.toggle("ready", !!upcoming);
     nextLabelEl.textContent = upcoming ? "Appuie pour passer à la série suivante" : "";
     nextBtn.onclick = ()=> hubGoToNextSet();
+    const totalEl = document.getElementById("hub-rest-total");
+    if(totalEl){
+      totalEl.classList.add("show");
+      totalEl.textContent = "Repos écoulé " + formatMMSS(elapsed) + " · prévu " + formatMMSS(activeRest.targetSec);
+    }
     syncCollapsedLabel();
     return;
   }
@@ -3426,9 +3478,33 @@ function openExerciseHistory(exId, preserveEditMode){
   title.textContent = ex.name;
   scroll.appendChild(title);
 
+  // Machine settings: a free-text note per exercise (seat height, angle, pin, etc.)
+  const card = document.createElement("div");
+  card.className = "machine-card";
+  const hasNote = !!(ex.machineNote && ex.machineNote.trim());
+  card.innerHTML = '<div class="mc-head"><span class="mc-title">Réglages machine</span>' +
+    '<button class="mc-edit">' + (hasNote ? "Modifier" : "Ajouter") + '</button></div>' +
+    '<div class="mc-value' + (hasNote ? '' : ' empty') + '"></div>';
+  card.querySelector(".mc-value").textContent = hasNote
+    ? ex.machineNote
+    : "Aucun réglage noté (ex. angle 3, siège 6)";
+  card.querySelector(".mc-edit").addEventListener("click", ()=>{
+    openTextModal("Réglages machine", ex.machineNote || "", (val)=>{
+      ex.machineNote = val;
+      persist();
+      openExerciseHistory(exId, true);
+    });
+  });
+  scroll.appendChild(card);
+
   const sessions = completedSessions().filter(s => s.sets.some(st=>st.exerciseId===exId && st.completed));
   if(sessions.length===0){
-    scroll.innerHTML += '<div class="empty-state">Pas encore d\'historique pour cet exercice.</div>';
+    // appendChild, not innerHTML +=, which would rebuild the DOM and drop the
+    // machine-settings button's click handler.
+    const empty = document.createElement("div");
+    empty.className = "empty-state";
+    empty.textContent = "Pas encore d'historique pour cet exercice.";
+    scroll.appendChild(empty);
     pushScreen("screen-exercise-history");
     return;
   }
@@ -3507,11 +3583,24 @@ function renderParametres(){
     '<label class="switch"><input type="checkbox" id="sound-toggle" '+(state.settings.sound?"checked":"")+'><span class="slider"></span></label>';
   group.appendChild(soundRow);
 
+  // Vibration is a hard platform limitation, not a "maybe": iOS Safari/Chrome never
+  // expose the Vibration API at all, so the toggle is greyed out there — it would
+  // otherwise promise something that can never happen on this device.
+  const vibSupported = (typeof navigator !== "undefined") && ("vibrate" in navigator);
   const vibRow = document.createElement("div");
-  vibRow.className = "settings-row";
+  vibRow.className = "settings-row" + (vibSupported ? "" : " disabled-row");
   vibRow.innerHTML = '<span class="lbl">Vibration du minuteur</span>'+
-    '<label class="switch"><input type="checkbox" id="vibration-toggle" '+(state.settings.vibration?"checked":"")+'><span class="slider"></span></label>';
+    '<label class="switch"><input type="checkbox" id="vibration-toggle" '+
+      (state.settings.vibration && vibSupported ? "checked" : "")+
+      (vibSupported ? "" : " disabled")+
+    '><span class="slider"></span></label>';
   group.appendChild(vibRow);
+  if(!vibSupported){
+    const vibNote = document.createElement("div");
+    vibNote.className = "settings-inline-note";
+    vibNote.textContent = "Non disponible : ce navigateur n'expose pas la vibration (c'est le cas de Safari et Chrome sur iPhone).";
+    group.appendChild(vibNote);
+  }
 
   const playerRow = document.createElement("div");
   playerRow.className = "settings-row";
@@ -3548,7 +3637,7 @@ function renderParametres(){
 
   const note = document.createElement("div");
   note.className = "settings-note";
-  note.textContent = "Le minuteur de repos continue de tourner tant que l'application reste ouverte. Selon l'appareil et le navigateur, le son et la vibration peuvent être limités en arrière-plan. Les marqueurs ajoutent une colonne sur chaque série : touche-la pour la marquer « trop facile » (↑) ou « échec » (✗).";
+  note.textContent = "Le minuteur de repos continue de tourner tant que l'application reste ouverte. Le son peut être coupé si une autre appli (musique, podcast...) garde la main sur le son de ton téléphone — impossible à éviter depuis une page web. Les marqueurs ajoutent une colonne sur chaque série : touche-la pour la marquer « trop facile » (↑) ou « échec » (✗).";
   scroll.appendChild(note);
 
   const autoNote = document.createElement("div");
@@ -3562,18 +3651,18 @@ function renderParametres(){
 
   const lastBackupRow = document.createElement("div");
   lastBackupRow.className = "settings-row";
-  lastBackupRow.innerHTML = '<span class="lbl">Dernière copie de sécurité</span><span class="settings-value">'+formatLastBackupLabel()+'</span>';
+  lastBackupRow.innerHTML = '<span class="lbl">Dernier export</span><span class="settings-value">'+formatLastBackupLabel()+'</span>';
   dataGroup.appendChild(lastBackupRow);
 
   const exportRow = document.createElement("button");
   exportRow.className = "settings-action-row";
-  exportRow.innerHTML = '<span class="lbl">Faire une copie de sécurité</span><span class="chev">›</span>';
+  exportRow.innerHTML = '<span class="lbl">Exporter</span><span class="chev">›</span>';
   exportRow.addEventListener("click", exportData);
   dataGroup.appendChild(exportRow);
 
   const importRow = document.createElement("button");
   importRow.className = "settings-action-row";
-  importRow.innerHTML = '<span class="lbl">Restaurer une copie de sécurité</span><span class="chev">›</span>';
+  importRow.innerHTML = '<span class="lbl">Importer</span><span class="chev">›</span>';
   importRow.addEventListener("click", ()=> document.getElementById("import-file-input").click());
   dataGroup.appendChild(importRow);
 
