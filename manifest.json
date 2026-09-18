@@ -1,0 +1,13 @@
+{
+  "name": "Simple Workout",
+  "short_name": "Workout",
+  "description": "Suivi de séances de musculation",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["fullscreen", "standalone"],
+  "orientation": "portrait",
+  "background_color": "#000000",
+  "theme_color": "#17171a",
+  "lang": "fr"
+}

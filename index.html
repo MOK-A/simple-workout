@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Workout">
+<meta name="theme-color" content="#17171a">
+<link rel="manifest" href="./manifest.json">
 <title>Simple Workout</title>
 <style>
   :root{
@@ -35,7 +38,12 @@
   /* Plain, boring html/body: no percentage height chain to go wrong. */
   html,body{height:100%; overflow:hidden;}
   body{
-    margin:0; background:#000; color:var(--text);
+    /* iOS paints the strip below the page viewport with the page background. Some
+       home-screen shortcuts (notably ones added from Chrome rather than Safari) give
+       the page less height than the screen, leaving that strip visible under the tab
+       bar. Matching the tab bar's colour makes it read as part of the bar instead of
+       a black gap — the strip itself is outside the page, so CSS cannot fill it. */
+    margin:0; background:#17171a; color:var(--text);
     font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
     -webkit-font-smoothing:antialiased;
     overscroll-behavior:none;
@@ -378,6 +386,10 @@
     font-size:13px; color:var(--text-faint); padding:3px 0;
   }
   .settings-diag .sd-row b{color:var(--text-dim); font-variant-numeric:tabular-nums;}
+  .settings-diag .sd-hint{
+    margin-top:10px; padding-top:10px; border-top:1px solid var(--border);
+    font-size:12.5px; color:var(--text-faint); line-height:1.45;
+  }
   .settings-reload{
     display:block; margin:0 auto 24px; padding:9px 18px; border-radius:18px;
     background:var(--surface-3); color:var(--text-dim); font-size:13px; font-weight:600;
@@ -986,7 +998,7 @@
    ============================================================ */
 // Bumped on every change. Shown in Réglages so it is easy to confirm, in standalone
 // ("app") mode, that a freshly deployed build actually replaced the cached one.
-const APP_VERSION = "1.4.0";
+const APP_VERSION = "1.5.0";
 const APP_BUILD_DATE = "2026-09-18";
 
 function uid(prefix){ return prefix + "-" + Math.random().toString(36).slice(2,9); }
@@ -3814,8 +3826,17 @@ function renderParametres(){
     ["marge basse (safe-area)", safeB],
     ["mode appli", (window.navigator.standalone || (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches)) ? "oui" : "non"]
   ];
+
+  // The telling number: screen height minus the height the browser actually gives
+  // the page. Anything above zero is a strip outside the page that CSS cannot reach.
+  const missing = Math.round(window.screen.height - window.innerHeight);
+  rows.push(["espace hors page", missing + (missing > 0 ? " ⚠️" : " ✓")]);
   diag.innerHTML = '<div class="sd-title">Diagnostic affichage</div>' +
-    rows.map(r => '<div class="sd-row"><span>'+r[0]+'</span><b>'+r[1]+'</b></div>').join("");
+    rows.map(r => '<div class="sd-row"><span>'+r[0]+'</span><b>'+r[1]+'</b></div>').join("") +
+    (missing > 0
+      ? '<div class="sd-hint">Le navigateur donne à la page ' + missing +
+        ' points de moins que l\'écran. Cette bande est hors de la page : essaie de recréer le raccourci depuis Safari (Partager → Sur l\'écran d\'accueil).</div>'
+      : '');
   scroll.appendChild(diag);
 
   const reloadRow = document.createElement("button");
