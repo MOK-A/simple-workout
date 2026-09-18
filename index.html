@@ -28,7 +28,14 @@
     --safe-t:env(safe-area-inset-top, 0px);
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent; touch-action:manipulation;}
-  html,body{height:100%;}
+  /* The document itself must never scroll: in standalone (app) mode on iOS the page
+     can drift up behind the status bar, which is what made the layout shift about
+     intermittently. Locking html/body and sizing the shell from a measured value
+     (rather than trusting dvh, which is unreliable there) keeps it pinned. */
+  html,body{
+    height:100%; overflow:hidden;
+    position:fixed; top:0; left:0; right:0; bottom:0;
+  }
   body{
     margin:0; background:#000; color:var(--text);
     font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
@@ -40,7 +47,8 @@
   ::selection{background:var(--accent); color:#000;}
 
   #app-shell{
-    max-width:480px; margin:0 auto; height:100vh; height:100dvh;
+    max-width:480px; margin:0 auto;
+    height:100vh; height:100dvh; height:var(--app-h, 100dvh);
     background:var(--bg); position:relative;
     display:block;
     overflow:hidden;
@@ -152,6 +160,15 @@
     font-size:13px; color:var(--text-faint); margin-bottom:10px;
   }
   .exercise-avg b{color:var(--text-dim); font-weight:500;}
+  .exercise-machine-note{
+    display:inline-flex; align-items:center; gap:6px; cursor:pointer;
+    margin:6px 0 2px; padding:5px 10px; border-radius:8px;
+    background:var(--surface); border-left:2px solid var(--accent);
+    font-size:13px; color:var(--text-dim); line-height:1.35;
+  }
+  .exercise-machine-note::before{
+    content:"⚙"; color:var(--accent); font-size:12px;
+  }
 
   .sets-wrap{background:var(--surface); border-radius:var(--radius); overflow:hidden;}
   .set-row-outer{position:relative; overflow:hidden;}
@@ -937,6 +954,28 @@
 /* ============================================================
    SEED DATA
    ============================================================ */
+// Chrome/Safari in standalone ("app") mode report dvh inconsistently, which showed
+// up as the layout being vertically misaligned now and then. Measuring the real
+// viewport and pinning it to --app-h removes the guesswork; it is re-measured on
+// every event that can change it (rotation, returning to the app, toolbar changes).
+function syncAppHeight(){
+  const h = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
+  if(!h) return;
+  document.documentElement.style.setProperty("--app-h", Math.round(h) + "px");
+}
+syncAppHeight();
+["resize", "orientationchange", "pageshow", "focus"].forEach(evt=>{
+  window.addEventListener(evt, ()=> setTimeout(syncAppHeight, 60));
+});
+document.addEventListener("visibilitychange", ()=>{
+  if(!document.hidden) setTimeout(syncAppHeight, 60);
+});
+if(window.visualViewport){
+  window.visualViewport.addEventListener("resize", syncAppHeight);
+}
+// Rotation and the standalone toolbar settle a beat after the event fires.
+window.addEventListener("orientationchange", ()=> setTimeout(syncAppHeight, 350));
+
 function uid(prefix){ return prefix + "-" + Math.random().toString(36).slice(2,9); }
 
 // Small "play" triangle used for the notStarted state of set/exercise status buttons —
@@ -1760,6 +1799,19 @@ function renderExerciseBlock(ex, session){
   avgEl.className = "exercise-avg";
   avgEl.innerHTML = avgLabel ? ("Moyenne : <b>"+escapeHtml(avgLabel)+"</b>") : "Aucune performance précédente";
   block.appendChild(avgEl);
+
+  // Machine settings note, shown right under the exercise when one has been saved.
+  if(ex.machineNote && ex.machineNote.trim()){
+    const noteEl = document.createElement("div");
+    noteEl.className = "exercise-machine-note";
+    noteEl.textContent = ex.machineNote.trim();
+    noteEl.title = "Réglages machine";
+    noteEl.addEventListener("click", (e)=>{
+      e.stopPropagation();
+      openExerciseHistory(ex.id);
+    });
+    block.appendChild(noteEl);
+  }
 
   {
     const wrap = document.createElement("div");
@@ -3493,6 +3545,8 @@ function openExerciseHistory(exId, preserveEditMode){
       ex.machineNote = val;
       persist();
       openExerciseHistory(exId, true);
+      // The séance list shows this note under the exercise, so refresh it too.
+      renderSeance();
     });
   });
   scroll.appendChild(card);
