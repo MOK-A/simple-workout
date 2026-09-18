@@ -5,9 +5,12 @@
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "display_override": ["fullscreen", "standalone"],
+  "display_override": [
+    "fullscreen",
+    "standalone"
+  ],
   "orientation": "portrait",
-  "background_color": "#000000",
+  "background_color": "#17171a",
   "theme_color": "#17171a",
   "lang": "fr"
 }

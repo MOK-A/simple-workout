@@ -64,6 +64,14 @@
     display:block;
     overflow:hidden;
   }
+  /* Opt-in compensation: some standalone launches give the page fewer points than
+     the screen has, leaving a strip under the tab bar. This stretches the shell to
+     the real screen height instead of the reported viewport. Off by default because
+     if the strip is genuinely off-screen it would push the tab bar out of view. */
+  #app-shell.stretch-to-screen{
+    bottom:auto;
+    height:var(--screen-h, 100%);
+  }
 
   /* ---------- Topbar ---------- */
   .topbar{
@@ -998,8 +1006,21 @@
    ============================================================ */
 // Bumped on every change. Shown in Réglages so it is easy to confirm, in standalone
 // ("app") mode, that a freshly deployed build actually replaced the cached one.
-const APP_VERSION = "1.5.0";
+const APP_VERSION = "1.6.0";
 const APP_BUILD_DATE = "2026-09-18";
+
+// Applies the opt-in "stretch to screen" compensation (see Réglages). Re-measured on
+// events that can change the viewport, since the discrepancy is not always present.
+function applyScreenStretch(){
+  const shell = document.getElementById("app-shell");
+  if(!shell) return;
+  const on = !!(state && state.settings && state.settings.stretchToScreen);
+  document.documentElement.style.setProperty("--screen-h", Math.round(window.screen.height) + "px");
+  shell.classList.toggle("stretch-to-screen", on);
+}
+["resize","orientationchange","pageshow"].forEach(evt=>{
+  window.addEventListener(evt, ()=> setTimeout(applyScreenStretch, 80));
+});
 
 function uid(prefix){ return prefix + "-" + Math.random().toString(36).slice(2,9); }
 
@@ -1087,7 +1108,7 @@ function freshState(){
     workouts: workouts,
     sessions: sessions,
     restTimes: restTimes,
-    settings: { unit:"kg", sound:true, vibration:true, effortButtons:false, nowBar:"bottom", playerBar:true },
+    settings: { unit:"kg", sound:true, vibration:true, effortButtons:false, nowBar:"bottom", playerBar:true, stretchToScreen:false },
     lastWorkoutId: workouts[0].id,
     currentSessionId: null,
     debugLog: [],
@@ -1101,7 +1122,7 @@ function emptyState(){
     workouts: [],
     sessions: [],
     restTimes: {},
-    settings: { unit:"kg", sound:true, vibration:true, effortButtons:false, nowBar:"bottom", playerBar:true },
+    settings: { unit:"kg", sound:true, vibration:true, effortButtons:false, nowBar:"bottom", playerBar:true, stretchToScreen:false },
     lastWorkoutId: null,
     currentSessionId: null,
     debugLog: [],
@@ -3801,6 +3822,24 @@ function renderParametres(){
     '<span class="sv-date">build ' + APP_BUILD_DATE + '</span>';
   scroll.appendChild(versionRow);
 
+  const gapNow = Math.round(window.screen.height - window.innerHeight);
+  if(gapNow > 0 || state.settings.stretchToScreen){
+    const stretchGroup = document.createElement("div");
+    stretchGroup.className = "settings-group";
+    stretchGroup.style.marginTop = "18px";
+    const stretchRow = document.createElement("div");
+    stretchRow.className = "settings-row";
+    stretchRow.innerHTML = '<span class="lbl">Étirer à la hauteur de l\'écran</span>'+
+      '<label class="switch"><input type="checkbox" id="stretch-toggle" '+
+      (state.settings.stretchToScreen ? "checked" : "")+'><span class="slider"></span></label>';
+    stretchGroup.appendChild(stretchRow);
+    const stretchNote = document.createElement("div");
+    stretchNote.className = "settings-inline-note";
+    stretchNote.textContent = "À essayer si une bande vide apparaît sous les onglets. Si les onglets se retrouvent coupés en bas, désactive ce réglage.";
+    stretchGroup.appendChild(stretchNote);
+    scroll.appendChild(stretchGroup);
+  }
+
   // Viewport diagnostics: the black band under the tab bar could not be reproduced
   // outside a real device, so these are the actual measured values to compare.
   const diag = document.createElement("div");
@@ -3848,6 +3887,15 @@ function renderParametres(){
   document.getElementById("sound-toggle").addEventListener("change", (e)=>{
     state.settings.sound = e.target.checked; persist();
   });
+  const stretchToggle = document.getElementById("stretch-toggle");
+  if(stretchToggle){
+    stretchToggle.addEventListener("change", (e)=>{
+      state.settings.stretchToScreen = e.target.checked;
+      persist();
+      applyScreenStretch();
+      renderParametres();
+    });
+  }
   document.getElementById("player-toggle").addEventListener("change", (e)=>{
     state.settings.playerBar = e.target.checked;
     if(!e.target.checked) hubFocusMode = false;
@@ -4348,6 +4396,7 @@ document.querySelectorAll(".tab-btn").forEach(btn=>{
    ============================================================ */
 async function init(){
   await loadState();
+  applyScreenStretch();
 
   const active = getActiveSession();
   if(active){
