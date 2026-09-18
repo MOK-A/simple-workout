@@ -2,7 +2,7 @@
 // with no internet connection, after it has been loaded at least once.
 // Keep this in step with APP_VERSION in simple-workout.html: changing it makes the
 // service worker drop the previous cache, so a new build cannot be served stale.
-const CACHE_NAME = "simple-workout-cache-v1.3.0";
+const CACHE_NAME = "simple-workout-cache-v1.4.0";
 const PRECACHE_URLS = ["./", "./index.html"];
 
 self.addEventListener("install", (event) => {
@@ -34,9 +34,19 @@ self.addEventListener("fetch", (event) => {
 
   // For the page itself: network-first, so a new version pushed to GitHub Pages
   // shows up immediately instead of one reload late. Falls back to cache offline.
+  // cache:"no-store" matters: a plain fetch() still consults the browser's own HTTP
+  // cache, which on GitHub Pages happily returns the previous index.html — that is
+  // what made new builds fail to appear even after a reload.
   if (isNavigation) {
+    const freshRequest = new Request(event.request.url, {
+      cache: "no-store",
+      credentials: "same-origin",
+      headers: event.request.headers,
+      mode: "same-origin",
+      redirect: "follow"
+    });
     event.respondWith(
-      fetch(event.request)
+      fetch(freshRequest)
         .then((response) => {
           if (response && response.status === 200) {
             const clone = response.clone();

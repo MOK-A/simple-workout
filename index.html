@@ -365,6 +365,19 @@
   .settings-version .sv-name{font-size:13px; font-weight:600;}
   .settings-version .sv-num{font-size:19px; font-weight:800; color:var(--text-dim); font-variant-numeric:tabular-nums;}
   .settings-version .sv-date{font-size:11.5px;}
+  .settings-diag{
+    background:var(--surface); border-radius:var(--radius);
+    padding:12px 14px; margin:0 0 16px;
+  }
+  .settings-diag .sd-title{
+    font-size:11.5px; font-weight:700; color:var(--text-faint);
+    text-transform:uppercase; letter-spacing:.04em; margin-bottom:8px;
+  }
+  .settings-diag .sd-row{
+    display:flex; justify-content:space-between; gap:12px;
+    font-size:13px; color:var(--text-faint); padding:3px 0;
+  }
+  .settings-diag .sd-row b{color:var(--text-dim); font-variant-numeric:tabular-nums;}
   .settings-reload{
     display:block; margin:0 auto 24px; padding:9px 18px; border-radius:18px;
     background:var(--surface-3); color:var(--text-dim); font-size:13px; font-weight:600;
@@ -973,7 +986,7 @@
    ============================================================ */
 // Bumped on every change. Shown in Réglages so it is easy to confirm, in standalone
 // ("app") mode, that a freshly deployed build actually replaced the cached one.
-const APP_VERSION = "1.3.0";
+const APP_VERSION = "1.4.0";
 const APP_BUILD_DATE = "2026-09-18";
 
 function uid(prefix){ return prefix + "-" + Math.random().toString(36).slice(2,9); }
@@ -3776,6 +3789,35 @@ function renderParametres(){
     '<span class="sv-date">build ' + APP_BUILD_DATE + '</span>';
   scroll.appendChild(versionRow);
 
+  // Viewport diagnostics: the black band under the tab bar could not be reproduced
+  // outside a real device, so these are the actual measured values to compare.
+  const diag = document.createElement("div");
+  diag.className = "settings-diag";
+  const shellEl = document.getElementById("app-shell");
+  const tabEl = document.getElementById("tabbar");
+  const shellRect = shellEl ? shellEl.getBoundingClientRect() : null;
+  const tabRect = tabEl ? tabEl.getBoundingClientRect() : null;
+  const vv = window.visualViewport;
+  const probe = document.createElement("div");
+  probe.style.cssText = "position:fixed;bottom:0;height:env(safe-area-inset-bottom,0px);width:0;";
+  document.body.appendChild(probe);
+  const safeB = Math.round(probe.getBoundingClientRect().height);
+  probe.remove();
+
+  const rows = [
+    ["écran (screen.height)", Math.round(window.screen.height)],
+    ["fenêtre (innerHeight)", Math.round(window.innerHeight)],
+    ["viewport visuel", vv ? Math.round(vv.height) : "n/a"],
+    ["hauteur de l'app", shellRect ? Math.round(shellRect.height) : "n/a"],
+    ["bas de l'app", shellRect ? Math.round(shellRect.bottom) : "n/a"],
+    ["bas des onglets", tabRect ? Math.round(tabRect.bottom) : "n/a"],
+    ["marge basse (safe-area)", safeB],
+    ["mode appli", (window.navigator.standalone || (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches)) ? "oui" : "non"]
+  ];
+  diag.innerHTML = '<div class="sd-title">Diagnostic affichage</div>' +
+    rows.map(r => '<div class="sd-row"><span>'+r[0]+'</span><b>'+r[1]+'</b></div>').join("");
+  scroll.appendChild(diag);
+
   const reloadRow = document.createElement("button");
   reloadRow.className = "settings-reload";
   reloadRow.textContent = "Forcer le rechargement";
@@ -3799,22 +3841,38 @@ function renderParametres(){
   });
 }
 
-// Clears the service-worker caches and reloads, so a stale cached build can be
-// replaced without having to delete and re-add the app from the home screen.
+// A plain reload is not enough in standalone mode: the service worker keeps
+// answering from its own cache. To really pick up a new build we unregister the
+// worker entirely, drop every cache, then navigate with a cache-busting URL.
 async function forceReload(){
-  try{
-    if(window.caches && caches.keys){
-      const keys = await caches.keys();
-      await Promise.all(keys.map(k => caches.delete(k)));
-    }
-  }catch(e){}
+  const btn = document.querySelector(".settings-reload");
+  if(btn){ btn.textContent = "Rechargement…"; btn.disabled = true; }
+
+  // 1. Unregister the service worker so it stops intercepting requests.
   try{
     if(navigator.serviceWorker && navigator.serviceWorker.getRegistrations){
       const regs = await navigator.serviceWorker.getRegistrations();
-      await Promise.all(regs.map(r => r.update().catch(()=>{})));
+      await Promise.all(regs.map(r => r.unregister().catch(()=>{})));
     }
   }catch(e){}
-  location.reload();
+
+  // 2. Delete every cache it may have populated.
+  try{
+    if(window.caches && caches.keys){
+      const keys = await caches.keys();
+      await Promise.all(keys.map(k => caches.delete(k).catch(()=>{})));
+    }
+  }catch(e){}
+
+  // 3. Navigate to a URL the cache has never seen, so nothing can be reused.
+  //    (location.reload() can still be served from a memory/back-forward cache.)
+  try{
+    const url = new URL(window.location.href);
+    url.searchParams.set("v", Date.now().toString(36));
+    window.location.replace(url.toString());
+  }catch(e){
+    window.location.reload();
+  }
 }
 
 // Writes immediately, bypassing the debounce: a snapshot must be on disk before the
