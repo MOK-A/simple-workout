@@ -48,7 +48,10 @@
 
   #app-shell{
     max-width:480px; margin:0 auto;
-    height:100vh; height:100dvh; height:var(--app-h, 100dvh);
+    /* html/body are position:fixed across the real viewport (inset 0), so 100% of
+       that is exact — unlike dvh (inconsistent in standalone mode) or innerHeight,
+       which excludes the bottom safe area and left a black band under the tab bar. */
+    height:100%;
     background:var(--bg); position:relative;
     display:block;
     overflow:hidden;
@@ -954,28 +957,6 @@
 /* ============================================================
    SEED DATA
    ============================================================ */
-// Chrome/Safari in standalone ("app") mode report dvh inconsistently, which showed
-// up as the layout being vertically misaligned now and then. Measuring the real
-// viewport and pinning it to --app-h removes the guesswork; it is re-measured on
-// every event that can change it (rotation, returning to the app, toolbar changes).
-function syncAppHeight(){
-  const h = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
-  if(!h) return;
-  document.documentElement.style.setProperty("--app-h", Math.round(h) + "px");
-}
-syncAppHeight();
-["resize", "orientationchange", "pageshow", "focus"].forEach(evt=>{
-  window.addEventListener(evt, ()=> setTimeout(syncAppHeight, 60));
-});
-document.addEventListener("visibilitychange", ()=>{
-  if(!document.hidden) setTimeout(syncAppHeight, 60);
-});
-if(window.visualViewport){
-  window.visualViewport.addEventListener("resize", syncAppHeight);
-}
-// Rotation and the standalone toolbar settle a beat after the event fires.
-window.addEventListener("orientationchange", ()=> setTimeout(syncAppHeight, 350));
-
 function uid(prefix){ return prefix + "-" + Math.random().toString(36).slice(2,9); }
 
 // Small "play" triangle used for the notStarted state of set/exercise status buttons —
