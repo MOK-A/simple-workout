@@ -32,10 +32,8 @@
      can drift up behind the status bar, which is what made the layout shift about
      intermittently. Locking html/body and sizing the shell from a measured value
      (rather than trusting dvh, which is unreliable there) keeps it pinned. */
-  html,body{
-    height:100%; overflow:hidden;
-    position:fixed; top:0; left:0; right:0; bottom:0;
-  }
+  /* Plain, boring html/body: no percentage height chain to go wrong. */
+  html,body{height:100%; overflow:hidden;}
   body{
     margin:0; background:#000; color:var(--text);
     font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
@@ -47,12 +45,14 @@
   ::selection{background:var(--accent); color:#000;}
 
   #app-shell{
-    max-width:480px; margin:0 auto;
-    /* html/body are position:fixed across the real viewport (inset 0), so 100% of
-       that is exact — unlike dvh (inconsistent in standalone mode) or innerHeight,
-       which excludes the bottom safe area and left a black band under the tab bar. */
-    height:100%;
-    background:var(--bg); position:relative;
+    /* Pinned straight to the viewport edges. No height:100%, no dvh, no measured
+       value — top/bottom anchoring cannot leave a gap under the tab bar, whatever
+       the browser reports for viewport height in standalone ("app") mode. */
+    position:fixed;
+    top:0; bottom:0;
+    left:50%; transform:translateX(-50%);
+    width:100%; max-width:480px;
+    background:var(--bg);
     display:block;
     overflow:hidden;
   }
@@ -973,7 +973,7 @@
    ============================================================ */
 // Bumped on every change. Shown in Réglages so it is easy to confirm, in standalone
 // ("app") mode, that a freshly deployed build actually replaced the cached one.
-const APP_VERSION = "1.2.0";
+const APP_VERSION = "1.3.0";
 const APP_BUILD_DATE = "2026-09-18";
 
 function uid(prefix){ return prefix + "-" + Math.random().toString(36).slice(2,9); }
