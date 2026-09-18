@@ -1,6 +1,8 @@
 // Minimal service worker: caches this single-page app so it keeps working
 // with no internet connection, after it has been loaded at least once.
-const CACHE_NAME = "simple-workout-cache-v1";
+// Keep this in step with APP_VERSION in simple-workout.html: changing it makes the
+// service worker drop the previous cache, so a new build cannot be served stale.
+const CACHE_NAME = "simple-workout-cache-v1.2.0";
 const PRECACHE_URLS = ["./", "./index.html"];
 
 self.addEventListener("install", (event) => {
@@ -26,6 +28,28 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
 
+  const isNavigation =
+    event.request.mode === "navigate" ||
+    (event.request.destination === "" && event.request.headers.get("accept") || "").includes("text/html");
+
+  // For the page itself: network-first, so a new version pushed to GitHub Pages
+  // shows up immediately instead of one reload late. Falls back to cache offline.
+  if (isNavigation) {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          if (response && response.status === 200) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          }
+          return response;
+        })
+        .catch(() => caches.match(event.request).then((c) => c || caches.match("./index.html")))
+    );
+    return;
+  }
+
+  // Everything else: cache-first with background refresh.
   event.respondWith(
     caches.match(event.request).then((cached) => {
       const networkFetch = fetch(event.request)

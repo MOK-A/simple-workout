@@ -358,6 +358,20 @@
   }
   .settings-row:last-child{border-bottom:none;}
   .settings-row.disabled-row{opacity:.45;}
+  .settings-version{
+    display:flex; flex-direction:column; align-items:center; gap:2px;
+    margin:26px 0 10px; color:var(--text-faint);
+  }
+  .settings-version .sv-name{font-size:13px; font-weight:600;}
+  .settings-version .sv-num{font-size:19px; font-weight:800; color:var(--text-dim); font-variant-numeric:tabular-nums;}
+  .settings-version .sv-date{font-size:11.5px;}
+  .settings-reload{
+    display:block; margin:0 auto 24px; padding:9px 18px; border-radius:18px;
+    background:var(--surface-3); color:var(--text-dim); font-size:13px; font-weight:600;
+  }
+  .settings-action-row .sub-lbl{
+    display:block; font-size:12px; color:var(--text-faint); font-weight:400; margin-top:2px;
+  }
   .settings-inline-note{
     padding:0 16px 12px; margin-top:-4px; font-size:12.5px; color:var(--text-faint); line-height:1.4;
   }
@@ -957,6 +971,11 @@
 /* ============================================================
    SEED DATA
    ============================================================ */
+// Bumped on every change. Shown in Réglages so it is easy to confirm, in standalone
+// ("app") mode, that a freshly deployed build actually replaced the cached one.
+const APP_VERSION = "1.2.0";
+const APP_BUILD_DATE = "2026-09-18";
+
 function uid(prefix){ return prefix + "-" + Math.random().toString(36).slice(2,9); }
 
 // Small "play" triangle used for the notStarted state of set/exercise status buttons —
@@ -1097,6 +1116,10 @@ window.addEventListener("unhandledrejection", (e)=>{
    or after adding it to the home screen).
    ============================================================ */
 const STORAGE_KEY = "simple-workout-state-v1";
+// Safety net: a copy of the data taken automatically just before anything that
+// replaces or erases it (import, reset, demo data). Lives under its own key, so it
+// survives the operation itself and can be restored from Réglages.
+const SNAPSHOT_KEY = "simple-workout-snapshot-v1";
 let state = null;
 let storageAvailable = true;
 const hasClaudeStorage = (typeof window !== "undefined" && window.storage && typeof window.storage.get === "function");
@@ -3587,6 +3610,14 @@ document.getElementById("exercise-history-edit-btn").addEventListener("click", (
    RENDER: PARAMETRES
    ============================================================ */
 function renderParametres(){
+  // Refresh the snapshot info, then re-render once it is known.
+  if(lastSnapshotMeta === null && !renderParametres._checking){
+    renderParametres._checking = true;
+    refreshSnapshotMeta().then(()=>{
+      renderParametres._checking = false;
+      if(lastSnapshotMeta && currentTab === "parametres") renderParametres();
+    });
+  }
   const scroll = document.getElementById("parametres-scroll");
   scroll.innerHTML = "";
 
@@ -3701,6 +3732,16 @@ function renderParametres(){
   importRow.addEventListener("click", ()=> document.getElementById("import-file-input").click());
   dataGroup.appendChild(importRow);
 
+  if(lastSnapshotMeta){
+    const undoRow = document.createElement("button");
+    undoRow.className = "settings-action-row";
+    undoRow.innerHTML = '<span class="lbl">Revenir en arrière<span class="sub-lbl">avant ' +
+      escapeHtml(lastSnapshotMeta.reason || "une modification") + ' · ' +
+      escapeHtml(formatSnapshotDate(lastSnapshotMeta.at)) + '</span></span><span class="chev">›</span>';
+    undoRow.addEventListener("click", restoreSafetySnapshot);
+    dataGroup.appendChild(undoRow);
+  }
+
   const demoRow = document.createElement("button");
   demoRow.className = "settings-action-row";
   demoRow.innerHTML = '<span class="lbl">Charger les données de démo</span><span class="chev">›</span>';
@@ -3724,8 +3765,22 @@ function renderParametres(){
 
   const dataNote = document.createElement("div");
   dataNote.className = "settings-note";
-  dataNote.textContent = "La copie de sécurité est un fichier JSON avec toutes tes séances, exercices et ton historique — à garder de côté (mail, cloud...) ou à me partager pour analyse. \"Restaurer\" remplace toutes les données actuelles par le contenu d'un fichier choisi. Le journal de debug garde une trace des actions clés (et de toute erreur rencontrée) pour aider à comprendre un souci après coup. La réinitialisation efface tout et repart sur une base vide.";
+  dataNote.textContent = "La copie de sécurité est un fichier JSON avec toutes tes séances, exercices et ton historique — à garder de côté (mail, cloud...) ou à me partager pour analyse. \"Restaurer\" remplace toutes les données actuelles par le contenu d'un fichier choisi. Le journal de debug garde une trace des actions clés (et de toute erreur rencontrée) pour aider à comprendre un souci après coup. La réinitialisation efface tout et repart sur une base vide. Avant chaque import, chargement de démo ou réinitialisation, une copie de tes données est gardée automatiquement : « Revenir en arrière » la restaure.";
   scroll.appendChild(dataNote);
+
+  // Version block: lets you confirm at a glance that a new build really loaded.
+  const versionRow = document.createElement("div");
+  versionRow.className = "settings-version";
+  versionRow.innerHTML = '<span class="sv-name">Simple Workout</span>' +
+    '<span class="sv-num">v' + APP_VERSION + '</span>' +
+    '<span class="sv-date">build ' + APP_BUILD_DATE + '</span>';
+  scroll.appendChild(versionRow);
+
+  const reloadRow = document.createElement("button");
+  reloadRow.className = "settings-reload";
+  reloadRow.textContent = "Forcer le rechargement";
+  reloadRow.addEventListener("click", forceReload);
+  scroll.appendChild(reloadRow);
 
   document.getElementById("sound-toggle").addEventListener("change", (e)=>{
     state.settings.sound = e.target.checked; persist();
@@ -3742,6 +3797,97 @@ function renderParametres(){
   document.getElementById("vibration-toggle").addEventListener("change", (e)=>{
     state.settings.vibration = e.target.checked; persist();
   });
+}
+
+// Clears the service-worker caches and reloads, so a stale cached build can be
+// replaced without having to delete and re-add the app from the home screen.
+async function forceReload(){
+  try{
+    if(window.caches && caches.keys){
+      const keys = await caches.keys();
+      await Promise.all(keys.map(k => caches.delete(k)));
+    }
+  }catch(e){}
+  try{
+    if(navigator.serviceWorker && navigator.serviceWorker.getRegistrations){
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map(r => r.update().catch(()=>{})));
+    }
+  }catch(e){}
+  location.reload();
+}
+
+// Writes immediately, bypassing the debounce: a snapshot must be on disk before the
+// destructive step runs, not a second later.
+async function writeRawKey(key, json){
+  if(hasClaudeStorage){
+    try{ await window.storage.set(key, json, false); return true; }catch(e){ return false; }
+  }
+  try{ localStorage.setItem(key, json); return true; }catch(e){ return false; }
+}
+
+async function readRawKey(key){
+  if(hasClaudeStorage){
+    try{ const r = await window.storage.get(key, false); return r && r.value ? r.value : null; }
+    catch(e){ return null; }
+  }
+  try{ return localStorage.getItem(key); }catch(e){ return null; }
+}
+
+async function saveSafetySnapshot(reason){
+  try{
+    const payload = JSON.stringify({ at: new Date().toISOString(), reason, state });
+    return await writeRawKey(SNAPSHOT_KEY, payload);
+  }catch(e){ return false; }
+}
+
+let lastSnapshotMeta = null;
+async function refreshSnapshotMeta(){
+  const raw = await readRawKey(SNAPSHOT_KEY);
+  if(!raw){ lastSnapshotMeta = null; return; }
+  try{
+    const parsed = JSON.parse(raw);
+    lastSnapshotMeta = { at: parsed.at, reason: parsed.reason };
+  }catch(e){ lastSnapshotMeta = null; }
+}
+
+async function restoreSafetySnapshot(){
+  const raw = await readRawKey(SNAPSHOT_KEY);
+  if(!raw){ showSimpleAlert("Aucune sauvegarde", "Aucune sauvegarde automatique n'est disponible."); return; }
+  let parsed;
+  try{ parsed = JSON.parse(raw); }
+  catch(e){ showSimpleAlert("Sauvegarde illisible", "La sauvegarde automatique n'a pas pu être lue."); return; }
+  if(!parsed || !parsed.state){ showSimpleAlert("Sauvegarde illisible", "La sauvegarde automatique est incomplète."); return; }
+
+  openConfirm(
+    "Revenir en arrière",
+    "Restaurer les données telles qu'elles étaient le " + formatSnapshotDate(parsed.at) +
+    ", juste avant : " + (parsed.reason || "une modification") + ". Les données actuelles seront remplacées.",
+    async ()=>{
+      // Snapshot the current data first, so this restore is itself reversible.
+      await saveSafetySnapshot("restauration d'une sauvegarde");
+      state = parsed.state;
+      if(!Array.isArray(state.debugLog)) state.debugLog = [];
+      currentWorkoutFilter = (state.lastWorkoutId && getWorkout(state.lastWorkoutId))
+        ? state.lastWorkoutId
+        : (state.workouts.length ? state.workouts[0].id : "ALL");
+      editMode = false; routineSheetEditMode = false;
+      clearDraftCache();
+      activeRest = null;
+      clearInterval(restTicker); restTicker = null;
+      persist();
+      await refreshSnapshotMeta();
+      switchTab(currentTab);
+    },
+    "Restaurer"
+  );
+}
+
+function formatSnapshotDate(iso){
+  const d = new Date(iso);
+  if(isNaN(d.getTime())) return "?";
+  return d.getDate() + " " + MONTHS_FR[d.getMonth()] + " à " +
+    String(d.getHours()).padStart(2,"0") + "h" + String(d.getMinutes()).padStart(2,"0");
 }
 
 function exportData(){
@@ -3795,7 +3941,8 @@ document.getElementById("import-file-input").addEventListener("change", (e)=>{
     openConfirm(
       "Importer ces données",
       "Cela remplacera toutes tes données actuelles (séances, exercices, historique) par le contenu de ce fichier. Cette action est irréversible.",
-      ()=>{
+      async ()=>{
+        await saveSafetySnapshot("import de données");
         if(!Array.isArray(parsed.debugLog)) parsed.debugLog = [];
         if(!parsed.settings) parsed.settings = { unit:"kg", sound:true, vibration:true };
         if(!parsed.restTimes) parsed.restTimes = {};
@@ -3823,7 +3970,8 @@ function loadDemoData(){
   openConfirm(
     "Charger les données de démo",
     "Cela remplacera toutes tes données actuelles par le jeu de données de démonstration (routines et historique d'exemple). Pense à exporter tes données avant si tu veux les garder. Cette action est irréversible.",
-    ()=>{
+    async ()=>{
+      await saveSafetySnapshot("chargement des données de démo");
       state = freshState();
       currentWorkoutFilter = state.workouts.length ? state.workouts[0].id : "ALL";
       editMode = false;
@@ -3856,7 +4004,8 @@ function resetAllData(){
   openConfirm(
     "Réinitialiser les données",
     "Toutes tes séances, routines, exercices et ton historique seront définitivement supprimés. L'application repartira sur une base entièrement vide (sans données de démonstration). Cette action est irréversible.",
-    ()=>{
+    async ()=>{
+      await saveSafetySnapshot("réinitialisation des données");
       state = emptyState();
       currentWorkoutFilter = "ALL";
       editMode = false;
