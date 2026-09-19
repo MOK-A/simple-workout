@@ -692,7 +692,10 @@
     font-variant-numeric:tabular-nums; margin-top:8px;
   }
   #control-hub.hub-focus .hub-rest-total.show{display:block;}
-  #control-hub.hub-focus .hub-focus-actions{order:4;}
+  /* Without an explicit order this landed in the order:0 group and rendered above
+     the title, overlapping the status bar. */
+  #control-hub.hub-focus .hub-rest-total{order:4;}
+  #control-hub.hub-focus .hub-focus-actions{order:5;}
   /* The "up next" recap duplicates the adjustable list here, so it is hidden. */
   #control-hub.hub-focus .hub-upnext{display:none !important;}
 
@@ -1006,8 +1009,9 @@
    ============================================================ */
 // Bumped on every change. Shown in Réglages so it is easy to confirm, in standalone
 // ("app") mode, that a freshly deployed build actually replaced the cached one.
-const APP_VERSION = "1.6.0";
+const APP_VERSION = "1.7.0";
 const APP_BUILD_DATE = "2026-09-18";
+const APP_BUILD_TIME = "18:03:49";
 
 // Applies the opt-in "stretch to screen" compensation (see Réglages). Re-measured on
 // events that can change the viewport, since the discrepancy is not always present.
@@ -1021,6 +1025,29 @@ function applyScreenStretch(){
 ["resize","orientationchange","pageshow"].forEach(evt=>{
   window.addEventListener(evt, ()=> setTimeout(applyScreenStretch, 80));
 });
+
+// Coming back from another app, iOS sometimes keeps a stale layout viewport: the
+// shell stays sized to whatever it was before, which is when the gap shows up.
+// Nudging the height forces the engine to re-read the viewport and re-lay out.
+function forceViewportReflow(){
+  const shell = document.getElementById("app-shell");
+  if(!shell) return;
+  if(state && state.settings && state.settings.stretchToScreen) return; // that mode sets its own height
+  const prev = shell.style.height;
+  shell.style.height = (window.innerHeight - 1) + "px";
+  void shell.offsetHeight; // read back to flush the layout
+  shell.style.height = prev;
+  void shell.offsetHeight;
+}
+
+document.addEventListener("visibilitychange", ()=>{
+  if(!document.hidden){
+    setTimeout(forceViewportReflow, 60);
+    setTimeout(forceViewportReflow, 350); // once more after iOS settles
+  }
+});
+window.addEventListener("pageshow", ()=> setTimeout(forceViewportReflow, 60));
+window.addEventListener("focus", ()=> setTimeout(forceViewportReflow, 60));
 
 function uid(prefix){ return prefix + "-" + Math.random().toString(36).slice(2,9); }
 
@@ -3819,7 +3846,7 @@ function renderParametres(){
   versionRow.className = "settings-version";
   versionRow.innerHTML = '<span class="sv-name">Simple Workout</span>' +
     '<span class="sv-num">v' + APP_VERSION + '</span>' +
-    '<span class="sv-date">build ' + APP_BUILD_DATE + '</span>';
+    '<span class="sv-date">build ' + APP_BUILD_DATE + ' · ' + APP_BUILD_TIME + '</span>';
   scroll.appendChild(versionRow);
 
   const gapNow = Math.round(window.screen.height - window.innerHeight);
@@ -3835,7 +3862,7 @@ function renderParametres(){
     stretchGroup.appendChild(stretchRow);
     const stretchNote = document.createElement("div");
     stretchNote.className = "settings-inline-note";
-    stretchNote.textContent = "À essayer si une bande vide apparaît sous les onglets. Si les onglets se retrouvent coupés en bas, désactive ce réglage.";
+    stretchNote.textContent = "Testé sur iPhone : cette option coupe le bas de la barre d'onglets, car la bande est réellement hors de l'écran d'affichage. À laisser désactivée, sauf si ton appareil se comporte autrement.";
     stretchGroup.appendChild(stretchNote);
     scroll.appendChild(stretchGroup);
   }
