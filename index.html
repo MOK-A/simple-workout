@@ -151,6 +151,15 @@
   @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.35;}}
   .session-banner b{color:var(--text); font-weight:600;}
   .session-banner-text{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .since-last-set{
+    display:flex; align-items:baseline; justify-content:space-between; gap:8px;
+    margin-top:4px; padding-top:4px; border-top:1px solid var(--border);
+  }
+  .since-last-set .sls-label{font-size:11.5px; color:var(--text-faint);}
+  .since-last-set .sls-value{
+    font-size:14px; font-weight:700; color:var(--text-dim);
+    font-variant-numeric:tabular-nums;
+  }
   .session-duration{font-size:14px; font-weight:800; color:var(--accent); font-variant-numeric:tabular-nums; flex-shrink:0;}
 
   /* ---------- Exercise block ---------- */
@@ -274,6 +283,73 @@
     padding:12px; color:var(--accent); font-size:15px; font-weight:600;
     background:var(--surface);
   }
+  /* ---- Vue focus : liste condensée (l'essentiel seulement) ---- */
+  #exercise-list.condensed .sets-wrap,
+  #exercise-list.condensed .exercise-machine-note{display:none;}
+  #exercise-list.condensed .exercise-block{
+    background:var(--surface); border-radius:var(--radius);
+    padding:12px 14px; margin-bottom:8px; cursor:pointer;
+  }
+  #exercise-list.condensed .exercise-avg{
+    font-size:12.5px; margin-top:2px;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  #exercise-list.condensed .exercise-head{margin-bottom:0;}
+  .condensed-progress{
+    font-size:12px; font-weight:700; color:var(--text-faint);
+    font-variant-numeric:tabular-nums; margin-right:10px;
+  }
+  .condensed-progress.done{color:var(--green);}
+  .condensed-progress.active{color:var(--accent);}
+
+  /* ---- Bulle compacte : la seule taille hors plein écran ----
+     Une ligne : infos à gauche, bouton au centre, flèche à droite. Le détail
+     (à suivre, libellés d'action, notes) est réservé au plein écran. */
+  #control-hub.hub-compact{padding:8px 10px;}
+  #control-hub.hub-compact .hub-topline{display:none;}
+  #control-hub.hub-compact .hub-ex,
+  #control-hub.hub-compact .hub-upnext,
+  #control-hub.hub-compact .hub-action-label,
+  #control-hub.hub-compact .hub-next-label,
+  #control-hub.hub-compact .hub-rest-total,
+  #control-hub.hub-compact .hub-ex-note,
+  #control-hub.hub-compact .hub-sets,
+  #control-hub.hub-compact .hub-focus-actions{display:none !important;}
+
+  #control-hub.hub-compact .hub-controls{
+    display:grid; grid-template-columns:1fr 52px 44px;
+    align-items:center; gap:10px; cursor:pointer;
+  }
+  .hub-compact-info{display:none; min-width:0;}
+  #control-hub.hub-compact .hub-compact-info{display:block;}
+  .hub-compact-info .hci-name{
+    font-size:14px; font-weight:700;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .hub-compact-info .hci-name.active{color:var(--accent);}
+  .hub-compact-info .hci-sub{
+    font-size:11.5px; color:var(--text-faint); font-variant-numeric:tabular-nums;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:1px;
+  }
+  #control-hub.hub-compact .hub-play-btn{
+    width:52px; height:52px; font-size:15px; justify-self:center;
+  }
+  #control-hub.hub-compact .hub-play-btn svg{width:20px; height:20px; margin-left:2px;}
+  #control-hub.hub-compact .hub-play-btn .rest-sub-inline{font-size:9px; margin-top:1px;}
+  #control-hub.hub-compact .hub-side-right{align-items:center; padding-right:0;}
+  #control-hub.hub-compact .hub-nav{width:40px; height:40px;}
+  #control-hub.hub-compact .hub-nav svg{width:17px; height:17px;}
+
+  .list-bottom-actions{
+    display:flex; flex-direction:column; gap:10px;
+    margin:22px 0 8px; padding-top:18px; border-top:1px solid var(--border);
+  }
+  .bottom-action{
+    width:100%; padding:13px; border-radius:12px;
+    background:var(--surface-3); color:var(--text-dim);
+    font-size:14.5px; font-weight:600;
+  }
+  .bottom-action.danger{background:rgba(255,69,58,.14); color:var(--red);}
   .add-exercise-row{
     display:flex; align-items:center; justify-content:center; gap:6px;
     padding:14px; margin-top:6px; color:var(--accent); font-size:15px; font-weight:600;
@@ -574,30 +650,6 @@
   }
   .hub-topline{gap:6px;}
 
-  /* ---- Collapsed player: a slim pill that barely covers the list ---- */
-  #control-hub.hub-collapsed{
-    padding:0; border-radius:26px; cursor:pointer;
-  }
-  #control-hub.hub-collapsed .hub-controls{justify-content:flex-start;}
-  #control-hub.hub-collapsed .hub-topline,
-  #control-hub.hub-collapsed .hub-ex,
-  #control-hub.hub-collapsed .hub-upnext,
-  #control-hub.hub-collapsed .hub-sets,
-  #control-hub.hub-collapsed .hub-focus-actions,
-  #control-hub.hub-collapsed .hub-action-label,
-  #control-hub.hub-collapsed .hub-side-right{display:none !important;}
-  #control-hub.hub-collapsed .hub-controls{
-    display:flex; align-items:center; gap:10px; padding:7px 14px 7px 8px;
-  }
-  #control-hub.hub-collapsed .hub-play-btn{
-    width:44px; height:44px; font-size:14px; border-width:2px;
-  }
-  #control-hub.hub-collapsed .hub-play-btn svg{width:17px; height:17px; margin-left:2px;}
-  .hub-collapsed-label{
-    display:none; font-size:13px; font-weight:600; color:var(--text-dim);
-    white-space:nowrap; max-width:150px; overflow:hidden; text-overflow:ellipsis;
-  }
-  #control-hub.hub-collapsed .hub-collapsed-label{display:block;}
 
   .hub-ex{text-align:center; margin-bottom:8px;}
   .hub-ex-name{
@@ -608,6 +660,15 @@
     font-size:13.5px; color:var(--text-dim); font-variant-numeric:tabular-nums; margin-top:2px;
     white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
   }
+  .hub-ex-note{display:none;}
+  #control-hub.hub-focus .hub-ex-note{
+    display:inline-flex; align-items:center; gap:6px; cursor:pointer;
+    margin-top:10px; padding:7px 12px; border-radius:9px;
+    background:var(--surface); border-left:2px solid var(--accent);
+    font-size:14px; color:var(--text-dim); line-height:1.35; text-align:left;
+  }
+  #control-hub.hub-focus .hub-ex-note::before{content:"⚙"; color:var(--accent); font-size:13px;}
+  #control-hub.hub-focus .hub-ex-note.empty{display:none;}
 
   /* Symmetric side columns keep the play button centred; the arrow sits further right. */
   .hub-controls{
@@ -639,7 +700,7 @@
 
   .hub-play-btn{
     width:76px; height:76px; border-radius:50%; justify-self:center;
-    display:flex; align-items:center; justify-content:center;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
     font-size:22px; font-weight:800; font-variant-numeric:tabular-nums;
     border:2px solid var(--text-faint); color:var(--text-faint); background:var(--surface-3);
     transition:background .15s, border-color .15s, color .15s;
@@ -647,6 +708,11 @@
   .hub-play-btn svg{width:30px; height:30px; margin-left:4px;}
   .hub-play-btn.ready{border-color:var(--accent); color:var(--accent); background:var(--accent-dim);}
   .hub-play-btn.running{background:var(--accent); border-color:var(--accent); color:#1a0e00;}
+  .hub-play-btn .rest-main{display:block; line-height:1.05;}
+  .hub-play-btn .rest-sub-inline{
+    display:block; font-size:11px; font-weight:600; opacity:.75; margin-top:2px;
+  }
+  #control-hub.hub-focus .hub-play-btn .rest-sub-inline{font-size:14px; margin-top:4px;}
   .hub-play-btn.resting{border-color:var(--blue); color:var(--blue); background:rgba(10,132,255,.14); font-size:21px;}
   .hub-play-btn.resting.overtime{border-color:var(--accent); color:var(--accent); background:var(--accent-dim);}
   .hub-play-btn.idle{border-color:var(--surface-3); color:var(--text-faint); background:var(--surface-3);}
@@ -793,9 +859,6 @@
     <div id="control-hub" class="hidden">
       <div class="hub-topline">
         <div id="session-banner-slot"></div>
-        <button class="hub-expand" id="hub-collapse-btn" aria-label="Réduire le lecteur">
-          <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-        </button>
         <button class="hub-expand" id="hub-expand-btn" aria-label="Mode focus">
           <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
         </button>
@@ -803,11 +866,15 @@
       <div class="hub-ex">
         <div class="hub-ex-name" id="hub-ex-name"></div>
         <div class="hub-ex-sub" id="hub-ex-sub"></div>
+        <div class="hub-ex-note" id="hub-ex-note"></div>
       </div>
       <div class="hub-controls">
+        <div class="hub-compact-info" id="hub-compact-info">
+          <div class="hci-name" id="hci-name"></div>
+          <div class="hci-sub" id="hci-sub"></div>
+        </div>
         <div class="hub-action-label" id="hub-action-label"></div>
         <button class="hub-play-btn" id="hub-play-btn"></button>
-        <div class="hub-collapsed-label" id="hub-collapsed-label"></div>
         <div class="hub-side-right">
           <div class="hub-next-label" id="hub-next-label"></div>
           <button class="hub-nav" id="hub-next-btn" aria-label="Suivant">
@@ -1009,9 +1076,9 @@
    ============================================================ */
 // Bumped on every change. Shown in Réglages so it is easy to confirm, in standalone
 // ("app") mode, that a freshly deployed build actually replaced the cached one.
-const APP_VERSION = "1.7.0";
+const APP_VERSION = "1.10.0";
 const APP_BUILD_DATE = "2026-09-18";
-const APP_BUILD_TIME = "18:03:49";
+const APP_BUILD_TIME = "14:50:33";
 
 // Applies the opt-in "stretch to screen" compensation (see Réglages). Re-measured on
 // events that can change the viewport, since the discrepancy is not always present.
@@ -1048,6 +1115,12 @@ document.addEventListener("visibilitychange", ()=>{
 });
 window.addEventListener("pageshow", ()=> setTimeout(forceViewportReflow, 60));
 window.addEventListener("focus", ()=> setTimeout(forceViewportReflow, 60));
+
+// "overview" keeps the full list on screen with a compact player; "focus" condenses
+// the list and opens the current exercise full screen.
+function getViewMode(){
+  return (state && state.settings && state.settings.viewMode === "focus") ? "focus" : "overview";
+}
 
 function uid(prefix){ return prefix + "-" + Math.random().toString(36).slice(2,9); }
 
@@ -1135,7 +1208,7 @@ function freshState(){
     workouts: workouts,
     sessions: sessions,
     restTimes: restTimes,
-    settings: { unit:"kg", sound:true, vibration:true, effortButtons:false, nowBar:"bottom", playerBar:true, stretchToScreen:false },
+    settings: { unit:"kg", sound:true, vibration:true, nowBar:"bottom", playerBar:true, viewMode:"overview", stretchToScreen:false },
     lastWorkoutId: workouts[0].id,
     currentSessionId: null,
     debugLog: [],
@@ -1149,7 +1222,7 @@ function emptyState(){
     workouts: [],
     sessions: [],
     restTimes: {},
-    settings: { unit:"kg", sound:true, vibration:true, effortButtons:false, nowBar:"bottom", playerBar:true, stretchToScreen:false },
+    settings: { unit:"kg", sound:true, vibration:true, nowBar:"bottom", playerBar:true, viewMode:"overview", stretchToScreen:false },
     lastWorkoutId: null,
     currentSessionId: null,
     debugLog: [],
@@ -1633,7 +1706,6 @@ let currentWorkoutFilter = null; // workout id, or "ALL"
 let editMode = false; // inline exercise reorder/remove mode on the Séance screen
 let routineSheetEditMode = false; // read-only by default; toggled by the pencil inside the routine sheet
 let sessionDetailEditMode = false; // read-only by default; toggled by the pencil in a past session's detail view
-let hubCollapsed = false; // player reduced to a slim pill
 let hubFocusMode = false; // full-screen player view
 let hubPinnedSetId = null; // set whose rest is showing in the centre button
 let hubFocusExId = null; // exercise the hub is pinned to via its prev/next arrows
@@ -1708,7 +1780,14 @@ function renderSeance(){
 
   if(active){
     const startedMs = new Date(active.startDate).getTime();
-    banner.innerHTML = '<div class="session-banner"><span class="dot"></span><span class="session-banner-text">Séance <b>'+escapeHtml(active.workoutName)+'</b> en cours depuis <b>'+formatTimeHM(active.startDate)+'</b></span><span class="session-duration live-chrono" data-format="long" data-started-at="'+startedMs+'">'+formatDurationLong((Date.now()-startedMs)/1000)+'</span></div>';
+    // Time since the last completed set, whatever the exercise: survives changing
+    // exercise, so it still tells you how long the machine change is taking.
+    const lastDone = active.lastSetDoneAt;
+    const sinceHtml = lastDone
+      ? '<span class="since-last-set"><span class="sls-label">depuis la dernière série</span>'+
+        '<span class="sls-value live-chrono" data-started-at="'+lastDone+'">'+formatMMSS((Date.now()-lastDone)/1000)+'</span></span>'
+      : '';
+    banner.innerHTML = '<div class="session-banner"><span class="dot"></span><span class="session-banner-text">Séance <b>'+escapeHtml(active.workoutName)+'</b> en cours depuis <b>'+formatTimeHM(active.startDate)+'</b></span><span class="session-duration live-chrono" data-format="long" data-started-at="'+startedMs+'">'+formatDurationLong((Date.now()-startedMs)/1000)+'</span></div>' + sinceHtml;
   } else {
     banner.innerHTML = "";
   }
@@ -1800,11 +1879,36 @@ function renderSeance(){
     }
   });
 
+  // Vue focus: the list is condensed to the essentials; tapping a block opens the
+  // exercise full screen. Vue d'ensemble keeps every detail inline.
+  list.classList.toggle("condensed", getViewMode() === "focus" && !editMode);
+
   const addRow = document.createElement("div");
   addRow.className = "add-exercise-row";
   addRow.textContent = "+ Ajouter un exercice";
   addRow.addEventListener("click", ()=> openAddExerciseSheet());
   list.appendChild(addRow);
+
+  // Bottom-of-list actions: always reachable even if the top bar ends up off-screen.
+  const bottomActions = document.createElement("div");
+  bottomActions.className = "list-bottom-actions";
+
+  if(getActiveSession()){
+    const stopBtn = document.createElement("button");
+    stopBtn.className = "bottom-action danger";
+    stopBtn.textContent = "Arrêter la séance";
+    stopBtn.addEventListener("click", ()=>{
+      openConfirm(
+        "Arrêter la séance",
+        "Terminer la séance en cours et l'enregistrer dans l'historique ?",
+        ()=> openFinishModal(),
+        "Arrêter"
+      );
+    });
+    bottomActions.appendChild(stopBtn);
+  }
+
+  list.appendChild(bottomActions);
 
   refreshRestOverlay();
   renderControlHub();
@@ -1831,6 +1935,14 @@ function renderExerciseBlock(ex, session){
   const exState = getExerciseState(session, ex.id);
   if(exState.status === "done") block.classList.add("exercise-done");
 
+  // Vue focus: the whole block is a tap target that opens this exercise full screen.
+  if(getViewMode() === "focus" && !editMode){
+    block.addEventListener("click", (e)=>{
+      if(e.target.closest(".exercise-status-btn, .stepper, .set-check, .set-effort, .set-restafter, .add-set-row, .exercise-name, .exercise-machine-note")) return;
+      openExerciseInFocus(ex.id);
+    });
+  }
+
   const lastPerf = getLastPerformance(ex.id, session ? session.id : null);
   const avgLabel = computeAverageLabel(lastPerf, ex);
 
@@ -1846,6 +1958,15 @@ function renderExerciseBlock(ex, session){
   nameEl.style.cursor = "pointer";
   nameEl.addEventListener("click", ()=> openExerciseHistory(ex.id));
   headLeft.appendChild(nameEl);
+
+  if(getViewMode() === "focus" && !editMode){
+    const doneCount = displaySets.filter(st=>st.completed).length;
+    const chip = document.createElement("span");
+    chip.className = "condensed-progress" +
+      (doneCount === displaySets.length && displaySets.length ? " done" : (exState.status === "active" ? " active" : ""));
+    chip.textContent = doneCount + "/" + displaySets.length;
+    headLeft.appendChild(chip);
+  }
   head.appendChild(headLeft);
 
   const headRight = document.createElement("div");
@@ -1896,8 +2017,8 @@ function renderExerciseBlock(ex, session){
 
     const hdr = document.createElement("div");
     hdr.className = "sets-header-row";
-    hdr.innerHTML = '<span></span><span>'+metric1HeaderLabel(ex)+'</span><span>'+metric2HeaderLabel(ex)+'</span><span>Avant</span><span>'+(usingDraft ? "Prévu" : "Repos")+'</span><span></span>' + (state.settings.effortButtons ? '<span></span>' : '');
-    if(state.settings.effortButtons) hdr.classList.add("with-effort");
+    hdr.innerHTML = '<span></span><span>'+metric1HeaderLabel(ex)+'</span><span>'+metric2HeaderLabel(ex)+'</span><span>Avant</span><span>'+(usingDraft ? "Prévu" : "Repos")+'</span><span></span>' + (true ? '<span></span>' : '');
+    if(true) hdr.classList.add("with-effort");
     wrap.appendChild(hdr);
 
     displaySets.forEach((s, idx)=>{
@@ -2001,7 +2122,7 @@ function renderSetRow(ex, s, idx, isDraft, session, lastPerf){
 
   // Optional effort marker column (Réglages -> "Marqueurs trop facile / échec").
   // Tapping cycles: none -> trop facile -> échec -> none.
-  if(state.settings.effortButtons){
+  if(true){
     row.classList.add("with-effort");
     const effortBtn = document.createElement("button");
     const effort = s.effort || null;
@@ -2160,6 +2281,9 @@ function handleSetStatusTap(ex, s, idx, isDraft, activeSessionBefore){
   } else if(status === "active"){
     target.completed = true;
     target.execDurationSec = Math.round((Date.now() - target.startedAt) / 1000);
+    // Session-wide marker: how long since ANY set ended, whatever the exercise.
+    // Useful while walking to the next machine, when the per-exercise rest is gone.
+    session.lastSetDoneAt = Date.now();
     beginSessionIfNeeded(session);
     startRest(ex, target);
     logEvent("set_done", { exercise: ex.name, index: idx, execDurationSec: target.execDurationSec, weight: target.weight, reps: target.reps });
@@ -2254,6 +2378,9 @@ function showUndoToast(text, onUndo){
   const toast = document.getElementById("undo-toast");
   document.getElementById("undo-text").textContent = text;
   pendingUndo = onUndo;
+  // A plain confirmation has nothing to undo: hide the button rather than leaving
+  // an "Annuler" that does nothing.
+  document.getElementById("undo-btn").style.display = onUndo ? "" : "none";
   toast.classList.add("show");
   undoTimer = setTimeout(()=>{
     toast.classList.remove("show");
@@ -2443,9 +2570,9 @@ function renderHubSets(ctx){
   inner.className = "sets-wrap";
 
   const hdr = document.createElement("div");
-  hdr.className = "sets-header-row" + (state.settings.effortButtons ? " with-effort" : "");
+  hdr.className = "sets-header-row" + (true ? " with-effort" : "");
   hdr.innerHTML = '<span></span><span>'+metric1HeaderLabel(ex)+'</span><span>'+metric2HeaderLabel(ex)+
-    '</span><span>Avant</span><span>Repos</span><span></span>' + (state.settings.effortButtons ? '<span></span>' : '');
+    '</span><span>Avant</span><span>Repos</span><span></span>' + (true ? '<span></span>' : '');
   inner.appendChild(hdr);
 
   sets.forEach((st, i)=> inner.appendChild(renderSetRow(ex, st, i, false, session, lastPerf)));
@@ -2502,6 +2629,92 @@ function syncSeanceBottomPadding(){
   });
 }
 
+// Editing the per-exercise machine settings note, from wherever it is reachable.
+// Rebuilds the interface from the stored state without touching any data: fixes a
+// session where the display got stuck (e.g. after switching apps) and some
+// exercises can no longer be selected. Running timers keep running — they are
+// derived from timestamps, not from anything held in the DOM.
+function resetInterface(){
+  try{
+    // Drop transient view state only.
+    editMode = false;
+    routineSheetEditMode = false;
+    sessionDetailEditMode = false;
+    exerciseHistoryEditMode = false;
+    hubFocusMode = false;
+    hubPinnedSetId = null;
+    hubFocusExId = null;
+    keypadCtx = null;
+    revealedRowEl = null;
+    clearDraftCache();
+
+    // Close every overlay, sheet and pushed screen.
+    document.querySelectorAll(".backdrop, .modal-backdrop").forEach(el=> el.classList.remove("show"));
+    popScreen("screen-session-detail");
+    popScreen("screen-exercise-history");
+    const shell = document.getElementById("app-shell");
+    if(shell) shell.classList.remove("focus-mode");
+    document.getElementById("app-shell").classList.remove("focus-mode");
+
+    // Re-point the view at the running session if there is one.
+    const active = getActiveSession();
+    if(active && getWorkout(active.workoutId)) currentWorkoutFilter = active.workoutId;
+
+    // Restart the ticking that drives the live chronos, without losing their origin.
+    if(activeRest && !restTicker) restTicker = setInterval(tickRest, 250);
+
+    applyScreenStretch();
+    forceViewportReflow();
+    switchTab("seance");
+    showUndoToast("Affichage réinitialisé", null);
+  }catch(e){
+    logEvent("js_error", { where: "resetInterface", message: String(e && e.message || e) });
+    location.reload();
+  }
+}
+
+// Vue focus: load an exercise into the player and open it full screen.
+function openExerciseInFocus(exId){
+  const w = currentWorkoutFilter === "ALL" ? findWorkoutContaining(exId) : currentWorkoutFilter;
+  materializeExercise(exId, w);
+  hubFocusExId = exId;
+  hubPinnedSetId = null;
+  hubFocusMode = true;
+  persist();
+  renderSeance();
+}
+
+function openMachineNoteEditor(ex, onSaved){
+  openTextModal("Réglages machine — " + ex.name, ex.machineNote || "", (val)=>{
+    ex.machineNote = val;
+    persist();
+    renderSeance();
+    if(currentHistoryExerciseId === ex.id && document.getElementById("screen-exercise-history").classList.contains("active")){
+      openExerciseHistory(ex.id, true);
+    }
+    if(onSaved) onSaved();
+  });
+}
+
+// The compact bubble carries a two-line summary of whatever the player is doing.
+function syncCompactInfo(){
+  const nameOut = document.getElementById("hci-name");
+  const subOut = document.getElementById("hci-sub");
+  if(!nameOut || !subOut) return;
+  const nameSrc = document.getElementById("hub-ex-name");
+  const subSrc = document.getElementById("hub-ex-sub");
+  nameOut.textContent = nameSrc ? nameSrc.textContent : "";
+  nameOut.classList.toggle("active", !!(nameSrc && nameSrc.classList.contains("active")));
+
+  // Keep it short: the set line, plus the session-wide counter when resting.
+  let sub = subSrc ? subSrc.textContent : "";
+  const session = getActiveSession();
+  if(session && session.lastSetDoneAt){
+    sub += (sub ? " · " : "") + "dernière série il y a " + formatMMSS((Date.now() - session.lastSetDoneAt)/1000);
+  }
+  subOut.textContent = sub;
+}
+
 function renderControlHub(){
   const hub = document.getElementById("control-hub");
   const nameEl = document.getElementById("hub-ex-name");
@@ -2521,7 +2734,10 @@ function renderControlHub(){
   }
   hub.classList.remove("hidden");
   hub.classList.toggle("hub-focus", hubFocusMode);
-  hub.classList.toggle("hub-collapsed", hubCollapsed && !hubFocusMode);
+  // Overview keeps the whole list visible, so the bar stays deliberately small.
+  // One compact size outside full screen — tapping the bubble opens full screen.
+  hub.classList.toggle("hub-compact", !hubFocusMode);
+  syncCompactInfo();
   document.getElementById("app-shell").classList.toggle("focus-mode", hubFocusMode);
   const expandBtn = document.getElementById("hub-expand-btn");
   expandBtn.title = hubFocusMode ? "Revenir à la liste" : "Mode focus";
@@ -2551,13 +2767,28 @@ function renderControlHub(){
     const overtime = remaining < 0;
     nameEl.textContent = activeRest.exerciseName;
     nameEl.classList.remove("active");
+    const restNoteEl = document.getElementById("hub-ex-note");
+    if(restNoteEl){
+      const rEx = getExercise(activeRest.exerciseId);
+      const rHas = !!(rEx && rEx.machineNote && rEx.machineNote.trim());
+      restNoteEl.classList.toggle("empty", !rHas);
+      restNoteEl.textContent = rHas ? rEx.machineNote.trim() : "";
+      restNoteEl.onclick = rHas ? (e)=>{ e.stopPropagation(); openMachineNoteEditor(rEx); } : null;
+    }
     subEl.textContent = overtime
       ? "Repos dépassé · prévu " + formatMMSS(activeRest.targetSec)
       : "Repos en cours · prévu " + formatMMSS(activeRest.targetSec);
     actionEl.className = "hub-action-label rest";
     actionEl.textContent = "Appuie pour arrêter le repos";
+    // One consistent rest display everywhere: elapsed time is the big figure, with
+    // the remaining countdown (or the overshoot) small underneath.
     btn.className = "hub-play-btn resting" + (overtime ? " overtime" : "");
-    btn.textContent = overtime ? formatMMSS(elapsed) : formatMMSS(remaining);
+    btn.innerHTML = '<span class="rest-main">' + formatMMSS(elapsed) + '</span>' +
+      '<span class="rest-sub-inline">' +
+      (activeRest.targetSec > 0
+        ? (overtime ? "+" + formatMMSS(-remaining) : "reste " + formatMMSS(remaining))
+        : "sans objectif") +
+      '</span>';
     btn.onclick = (e)=>{ e.stopPropagation(); stopRest(); };
     nextBtn.classList.toggle("disabled", !upcoming);
     nextBtn.classList.toggle("ready", !!upcoming);
@@ -2566,9 +2797,10 @@ function renderControlHub(){
     const totalEl = document.getElementById("hub-rest-total");
     if(totalEl){
       totalEl.classList.add("show");
-      totalEl.textContent = "Repos écoulé " + formatMMSS(elapsed) + " · prévu " + formatMMSS(activeRest.targetSec);
+      totalEl.textContent = activeRest.targetSec > 0
+        ? "Repos écoulé " + formatMMSS(elapsed) + " · objectif " + formatMMSS(activeRest.targetSec)
+        : "Repos écoulé " + formatMMSS(elapsed);
     }
-    syncCollapsedLabel();
     return;
   }
 
@@ -2586,7 +2818,6 @@ function renderControlHub(){
     nextBtn.classList.add("disabled");
     nextBtn.classList.remove("ready");
     nextLabelEl.textContent = "";
-    syncCollapsedLabel();
     return;
   }
 
@@ -2597,6 +2828,21 @@ function renderControlHub(){
 
   nameEl.textContent = ex.name;
   nameEl.classList.toggle("active", exState.status === "active");
+  // In focus mode the exercise list is out of reach, so the title itself opens the
+  // machine-settings note for editing.
+  nameEl.style.cursor = "pointer";
+  nameEl.onclick = (e)=>{
+    e.stopPropagation();
+    openMachineNoteEditor(ex);
+  };
+  // Machine settings, visible in focus mode and tappable to edit.
+  const noteEl = document.getElementById("hub-ex-note");
+  if(noteEl){
+    const hasNote = !!(ex.machineNote && ex.machineNote.trim());
+    noteEl.classList.toggle("empty", !hasNote);
+    noteEl.textContent = hasNote ? ex.machineNote.trim() : "";
+    noteEl.onclick = (e)=>{ e.stopPropagation(); openMachineNoteEditor(ex); };
+  }
   subEl.textContent = "Série " + (idx+1) + "/" + total + " · " +
     formatMetric1(ex, set.weight) + " " + metric1UnitLabel(ex) + " × " +
     formatMetric2(ex, set.reps) + (getRepsMode(ex)==="duration" ? "" : " " + metric2UnitLabel(ex));
@@ -2629,44 +2875,25 @@ function renderControlHub(){
   nextBtn.classList.toggle("ready", canAdvance);
   nextLabelEl.textContent = canAdvance ? "Appuie pour passer à la série suivante" : "";
   nextBtn.onclick = ()=> hubGoToNextSet();
-  syncCollapsedLabel();
 }
 
-// The slim pill shows a one-line summary of whatever the full bar is displaying.
-function syncCollapsedLabel(){
-  const el = document.getElementById("hub-collapsed-label");
-  if(!el) return;
-  const name = document.getElementById("hub-ex-name").textContent;
-  const sub = document.getElementById("hub-ex-sub").textContent;
-  const shortSub = (sub.match(/Série \d+\/\d+/) || [])[0] || (activeRest ? "Repos" : "");
-  el.textContent = shortSub ? (name + " · " + shortSub) : name;
-}
 
 document.getElementById("hub-focus-exit-btn").addEventListener("click", (e)=>{
   e.stopPropagation();
   exitHubFocus();
 });
-document.getElementById("hub-collapse-btn").addEventListener("click", (e)=>{
-  e.stopPropagation();
-  // Steps down one size at a time: full screen -> bar -> pill.
-  if(hubFocusMode){
-    hubFocusMode = false;
-  } else {
-    hubCollapsed = true;
-  }
-  renderControlHub();
-});
 document.getElementById("control-hub").addEventListener("click", (e)=>{
-  // The collapsed pill is one big "restore" target, except for its play button.
-  if(!hubCollapsed || hubFocusMode) return;
-  if(e.target.closest("#hub-play-btn")) return;
-  hubCollapsed = false;
+  // Tapping the compact bubble opens the full-screen player; its own controls
+  // (play, next) keep their own behaviour.
+  if(hubFocusMode) return;
+  if(e.target.closest("#hub-play-btn, #hub-next-btn, #hub-expand-btn")) return;
+  hubFocusMode = true;
   renderControlHub();
 });
+
 document.getElementById("hub-expand-btn").addEventListener("click", (e)=>{
   e.stopPropagation();
   hubFocusMode = !hubFocusMode;
-  if(hubFocusMode) hubCollapsed = false;
   renderControlHub();
 });
 
@@ -2885,7 +3112,6 @@ document.addEventListener("touchstart", unlockAudio, { once:true });
 document.addEventListener("click", unlockAudio, { once:true });
 
 function playBeep(freq, durationSec, volume){
-  if(!state.settings.sound) return;
   const ctx = getAudioCtx();
   if(!ctx) return;
   try{
@@ -2905,7 +3131,7 @@ function tryVibrate(pattern){
   // Note: iOS Safari does not implement the Vibration API at all, so this is
   // a no-op on iPhone. Kept for Android/other browsers where it does work.
   try{
-    if(state.settings.vibration && navigator.vibrate) navigator.vibrate(pattern);
+    if(navigator.vibrate) navigator.vibrate(pattern);
   }catch(e){}
 }
 
@@ -3617,15 +3843,7 @@ function openExerciseHistory(exId, preserveEditMode){
   card.querySelector(".mc-value").textContent = hasNote
     ? ex.machineNote
     : "Aucun réglage noté (ex. angle 3, siège 6)";
-  card.querySelector(".mc-edit").addEventListener("click", ()=>{
-    openTextModal("Réglages machine", ex.machineNote || "", (val)=>{
-      ex.machineNote = val;
-      persist();
-      openExerciseHistory(exId, true);
-      // The séance list shows this note under the exercise, so refresh it too.
-      renderSeance();
-    });
-  });
+  card.querySelector(".mc-edit").addEventListener("click", ()=> openMachineNoteEditor(ex));
   scroll.appendChild(card);
 
   const sessions = completedSessions().filter(s => s.sets.some(st=>st.exerciseId===exId && st.completed));
@@ -3716,36 +3934,44 @@ function renderParametres(){
   unitRow.appendChild(seg);
   group.appendChild(unitRow);
 
-  const soundRow = document.createElement("div");
-  soundRow.className = "settings-row";
-  soundRow.innerHTML = '<span class="lbl">Son du minuteur</span>'+
-    '<label class="switch"><input type="checkbox" id="sound-toggle" '+(state.settings.sound?"checked":"")+'><span class="slider"></span></label>';
-  group.appendChild(soundRow);
+  scroll.appendChild(group);
 
-  // Vibration is a hard platform limitation, not a "maybe": iOS Safari/Chrome never
-  // expose the Vibration API at all, so the toggle is greyed out there — it would
-  // otherwise promise something that can never happen on this device.
-  const vibSupported = (typeof navigator !== "undefined") && ("vibrate" in navigator);
-  const vibRow = document.createElement("div");
-  vibRow.className = "settings-row" + (vibSupported ? "" : " disabled-row");
-  vibRow.innerHTML = '<span class="lbl">Vibration du minuteur</span>'+
-    '<label class="switch"><input type="checkbox" id="vibration-toggle" '+
-      (state.settings.vibration && vibSupported ? "checked" : "")+
-      (vibSupported ? "" : " disabled")+
-    '><span class="slider"></span></label>';
-  group.appendChild(vibRow);
-  if(!vibSupported){
-    const vibNote = document.createElement("div");
-    vibNote.className = "settings-inline-note";
-    vibNote.textContent = "Non disponible : ce navigateur n'expose pas la vibration (c'est le cas de Safari et Chrome sur iPhone).";
-    group.appendChild(vibNote);
-  }
+  // ---- Affichage : tout ce qui touche à la présentation, regroupé ici ----
+  const dispGroup = document.createElement("div");
+  dispGroup.className = "settings-group";
+
+  const modeRow = document.createElement("div");
+  modeRow.className = "settings-row";
+  modeRow.innerHTML = '<span class="lbl">Mode d\'affichage</span>';
+  const modeSeg = document.createElement("div");
+  modeSeg.className = "segmented";
+  [["overview","Vue d\'ensemble"],["focus","Vue focus"]].forEach(([val,label])=>{
+    const b = document.createElement("button");
+    b.textContent = label;
+    b.className = (getViewMode()===val) ? "active" : "";
+    b.addEventListener("click", ()=>{
+      state.settings.viewMode = val;
+      if(val === "overview") hubFocusMode = false;
+      persist();
+      renderParametres();
+    });
+    modeSeg.appendChild(b);
+  });
+  modeRow.appendChild(modeSeg);
+  dispGroup.appendChild(modeRow);
+
+  const modeNote = document.createElement("div");
+  modeNote.className = "settings-inline-note";
+  modeNote.textContent = getViewMode() === "focus"
+    ? "Vue focus : la liste est condensée, et toucher un exercice l'ouvre en plein écran."
+    : "Vue d'ensemble : la liste complète reste affichée, avec un bandeau de lecture compact.";
+  dispGroup.appendChild(modeNote);
 
   const playerRow = document.createElement("div");
   playerRow.className = "settings-row";
   playerRow.innerHTML = '<span class="lbl">Barre de lecture</span>'+
     '<label class="switch"><input type="checkbox" id="player-toggle" '+(state.settings.playerBar!==false?"checked":"")+'><span class="slider"></span></label>';
-  group.appendChild(playerRow);
+  dispGroup.appendChild(playerRow);
 
   const nowBarRow = document.createElement("div");
   nowBarRow.className = "settings-row";
@@ -3764,19 +3990,19 @@ function renderParametres(){
     nbSeg.appendChild(b);
   });
   nowBarRow.appendChild(nbSeg);
-  if(state.settings.playerBar !== false) group.appendChild(nowBarRow);
+  if(state.settings.playerBar !== false) dispGroup.appendChild(nowBarRow);
 
-  const effortRow = document.createElement("div");
-  effortRow.className = "settings-row";
-  effortRow.innerHTML = '<span class="lbl">Marqueurs trop facile / échec</span>'+
-    '<label class="switch"><input type="checkbox" id="effort-toggle" '+(state.settings.effortButtons?"checked":"")+'><span class="slider"></span></label>';
-  group.appendChild(effortRow);
+  const resetUiRow = document.createElement("button");
+  resetUiRow.className = "settings-action-row";
+  resetUiRow.innerHTML = '<span class="lbl">Réinitialiser l\'affichage<span class="sub-lbl">sans toucher aux données ni aux chronos</span></span><span class="chev">›</span>';
+  resetUiRow.addEventListener("click", resetInterface);
+  dispGroup.appendChild(resetUiRow);
 
-  scroll.appendChild(group);
+  scroll.appendChild(dispGroup);
 
   const note = document.createElement("div");
   note.className = "settings-note";
-  note.textContent = "Le minuteur de repos continue de tourner tant que l'application reste ouverte. Le son peut être coupé si une autre appli (musique, podcast...) garde la main sur le son de ton téléphone — impossible à éviter depuis une page web. Les marqueurs ajoutent une colonne sur chaque série : touche-la pour la marquer « trop facile » (↑) ou « échec » (✗).";
+  note.textContent = "Le minuteur de repos continue de tourner tant que l'application reste ouverte. Chaque série porte un marqueur d'effort : touche-le pour la marquer « trop facile » (↑) ou « échec » (✗).";
   scroll.appendChild(note);
 
   const autoNote = document.createElement("div");
@@ -3911,9 +4137,6 @@ function renderParametres(){
   reloadRow.addEventListener("click", forceReload);
   scroll.appendChild(reloadRow);
 
-  document.getElementById("sound-toggle").addEventListener("change", (e)=>{
-    state.settings.sound = e.target.checked; persist();
-  });
   const stretchToggle = document.getElementById("stretch-toggle");
   if(stretchToggle){
     stretchToggle.addEventListener("change", (e)=>{
@@ -3928,12 +4151,6 @@ function renderParametres(){
     if(!e.target.checked) hubFocusMode = false;
     persist();
     renderParametres();
-  });
-  document.getElementById("effort-toggle").addEventListener("change", (e)=>{
-    state.settings.effortButtons = e.target.checked; persist();
-  });
-  document.getElementById("vibration-toggle").addEventListener("change", (e)=>{
-    state.settings.vibration = e.target.checked; persist();
   });
 }
 
