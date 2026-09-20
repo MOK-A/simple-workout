@@ -21,6 +21,11 @@
     --text-faint:#8b8b91;
     --accent:#ff9f0a;
     --accent-dim:#7a4e0f;
+    /* "live" marks what is happening right now (set running, exercise active,
+       chronos ticking). In the classic theme it is the accent itself; other themes
+       give it a contrasting colour so "possible" and "in progress" never look alike. */
+    --live:#ff9f0a;
+    --live-dim:#7a4e0f;
     --blue:#0a84ff;
     --green:#32d74b;
     --red:#ff453a;
@@ -30,6 +35,74 @@
     --safe-b:env(safe-area-inset-bottom, 0px);
     --safe-t:env(safe-area-inset-top, 0px);
   }
+
+  /* ---------- Thème "Indigo" ----------
+     Indigo profond plutôt que noir, avec des surfaces qui montent par paliers
+     violacés. L'accent violet porte les actions, le mint marque ce qui est fait
+     et l'ambre le temps qui court : trois signaux distincts au lieu d'une seule
+     couleur qui doit tout dire. */
+  body.theme-indigo{
+    --bg:#141038;
+    --surface:#1e1950;
+    --surface-2:#282161;
+    --surface-3:#342c78;
+    --border:#37307a;
+    --text:#f2f0ff;
+    --text-dim:#b9b4e0;
+    --text-faint:#8079b8;
+    /* Actions stay orange, exactly as in the classic theme: the buttons you press
+       are in the same colour whichever theme is on. Violet is the room's mood —
+       surfaces, shadows, depth — not a control colour. */
+    --accent:#ff9540;
+    --accent-dim:#4a2c12;
+    --live:#ff9540;
+    --live-dim:#4a2c12;
+    /* Rest timer picks up the light blue of the reference instead of a flat blue. */
+    --blue:#5fd4f4;
+    --green:#5eead4;
+    --red:#ff6b81;
+    --violet:#8b72ff;
+    --radius:16px;
+    --radius-sm:10px;
+    background:#1e1950;
+  }
+  body.theme-indigo #app-shell{background:var(--bg);}
+  body.theme-indigo #tabbar{background:rgba(30,25,80,0.94);}
+  /* Cards lift with a violet-tinted shadow rather than hairline borders. */
+  body.theme-indigo .exercise-block,
+  body.theme-indigo .history-row,
+  body.theme-indigo .sets-wrap,
+  body.theme-indigo .summary-strip,
+  body.theme-indigo .settings-group,
+  body.theme-indigo .machine-card{
+    box-shadow:0 1px 0 rgba(255,255,255,.04) inset, 0 3px 14px rgba(10,6,40,.5);
+  }
+  body.theme-indigo #control-hub{
+    border-color:#403a86;
+    box-shadow:0 10px 30px rgba(10,6,40,.65);
+  }
+  /* Rest keeps the light blue; overtime falls through to the shared orange rule. */
+  body.theme-indigo .hub-play-btn.resting{
+    background:rgba(95,212,244,.14);
+  }
+  /* Violet earns its place on the ambient chrome rather than on controls. */
+  body.theme-indigo .hr-bar i{
+    background:linear-gradient(90deg,var(--violet),var(--accent));
+  }
+  body.theme-indigo .hr-date.hue-0{background:linear-gradient(150deg,#5a3a18,#2c1d0c);}
+  body.theme-indigo .hr-date.hue-1{background:linear-gradient(150deg,#1b4f6b,#10293a);}
+  body.theme-indigo .hr-date.hue-2{background:linear-gradient(150deg,#1a5a48,#0d2e25);}
+  body.theme-indigo .hr-date.hue-3{background:linear-gradient(150deg,#463a8f,#241d4c);}
+  body.theme-indigo .hr-date.hue-4{background:linear-gradient(150deg,#6b2a42,#351524);}
+  body.theme-indigo .hr-date.hue-5{background:linear-gradient(150deg,#554a2a,#2a2415);}
+  body.theme-indigo .hr-date.hue-6{background:linear-gradient(150deg,#22605a,#11302d);}
+  body.theme-indigo .hr-date.hue-7{background:linear-gradient(150deg,#67305c,#34182e);}
+  body.theme-indigo .hr-date.hue-8{background:linear-gradient(150deg,#333f87,#1b2146);}
+  body.theme-indigo .hr-date.hue-9{background:linear-gradient(150deg,#6e361c,#381b0e);}
+  body.theme-indigo .history-month{color:#9f96d8;}
+  body.theme-indigo .exercise-name{letter-spacing:-0.015em;}
+  body.theme-indigo .hr-name{letter-spacing:-0.015em;}
+  body.theme-indigo .stepper .val-btn .val{letter-spacing:-0.02em;}
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent; touch-action:manipulation;}
   /* The document itself must never scroll: in standalone (app) mode on iOS the page
      can drift up behind the status bar, which is what made the layout shift about
@@ -103,8 +176,9 @@
   .topbar-icon-btn.active{color:var(--accent);}
   .topbar-icon-btn.danger-icon{color:var(--red);}
   .back-btn{
-    display:flex; align-items:center; gap:2px; font-size:17px; color:var(--blue);
-    padding:4px 4px 4px 0; font-weight:400;
+    /* The accent, not the blue: blue means "rest timer" everywhere else in the app. */
+    display:flex; align-items:center; gap:2px; font-size:17px; color:var(--accent);
+    padding:4px 4px 4px 0; font-weight:500;
   }
   .back-btn svg{width:22px; height:22px;}
 
@@ -146,7 +220,7 @@
     border-radius:var(--radius-sm); display:flex; align-items:center; gap:8px;
     font-size:13.5px; color:var(--text-dim); flex-shrink:0;
   }
-  .session-banner .dot{width:7px; height:7px; border-radius:50%; background:var(--accent); flex-shrink:0;
+  .session-banner .dot{width:7px; height:7px; border-radius:50%; background:var(--live); flex-shrink:0;
     animation:pulse 1.6s ease-in-out infinite;}
   @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.35;}}
   .session-banner b{color:var(--text); font-weight:600;}
@@ -171,9 +245,9 @@
   .exercise-head-left{display:flex; align-items:center; gap:8px; min-width:0;}
   .exercise-head-right{display:flex; align-items:center; gap:8px; flex-shrink:0;}
   .exercise-name{font-size:17px; font-weight:700; letter-spacing:-0.01em; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
-  .exercise-name.active{color:var(--accent);}
+  .exercise-name.active{color:var(--live);}
   .exercise-mini-chrono{
-    font-size:13.5px; font-weight:700; color:var(--accent); font-variant-numeric:tabular-nums;
+    font-size:13.5px; font-weight:700; color:var(--live); font-variant-numeric:tabular-nums;
   }
   .exercise-status-btn{
     width:27px; height:27px; border-radius:50%; border:1.6px solid var(--text-faint);
@@ -181,7 +255,7 @@
     flex-shrink:0; transition:background .15s, border-color .15s, color .15s;
   }
   .exercise-status-btn.notStarted svg{margin-left:2px;}
-  .exercise-status-btn.active{border-color:var(--accent); color:var(--accent); background:var(--accent-dim);}
+  .exercise-status-btn.active{border-color:var(--live); color:var(--live); background:var(--live-dim);}
   .exercise-status-btn.done{background:var(--green); border-color:var(--green); color:#04140a; font-size:14px;}
 
   .exercise-avg{
@@ -228,7 +302,7 @@
   }
   .set-check.notStarted svg{margin-left:2px;}
   .set-check.done{background:var(--green); border-color:var(--green); color:#04140a;}
-  .set-check.active{background:var(--accent-dim); border-color:var(--accent); color:var(--accent); font-size:10px;}
+  .set-check.active{background:var(--live-dim); border-color:var(--live); color:var(--live); font-size:10px;}
   .stepper{
     display:flex; align-items:center; justify-content:center; gap:3px;
   }
@@ -253,7 +327,7 @@
   .set-restafter.live{color:var(--blue); font-weight:700; font-style:normal;}
   .set-restafter.live.overtime-live{color:var(--accent);}
   .set-live-chrono{
-    display:block; font-size:11px; font-weight:700; color:var(--accent);
+    display:block; font-size:11px; font-weight:700; color:var(--live);
     font-variant-numeric:tabular-nums; margin-top:2px;
   }
   .set-prev-rest{
@@ -300,7 +374,7 @@
     font-variant-numeric:tabular-nums; margin-right:10px;
   }
   .condensed-progress.done{color:var(--green);}
-  .condensed-progress.active{color:var(--accent);}
+  .condensed-progress.active{color:var(--live);}
 
   /* ---- Bulle compacte : la seule taille hors plein écran ----
      Une ligne : infos à gauche, bouton au centre, flèche à droite. Le détail
@@ -326,7 +400,7 @@
     font-size:14px; font-weight:700;
     white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
   }
-  .hub-compact-info .hci-name.active{color:var(--accent);}
+  .hub-compact-info .hci-name.active{color:var(--live);}
   .hub-compact-info .hci-sub{
     font-size:11.5px; color:var(--text-faint); font-variant-numeric:tabular-nums;
     white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:1px;
@@ -390,12 +464,125 @@
   .history-date-label{font-size:13px; font-weight:700; color:var(--text-faint); text-transform:uppercase; letter-spacing:.03em; margin:18px 2px 8px;}
   .history-avg-caption{font-size:12.5px; font-weight:600; color:var(--text-faint); margin:4px 2px 8px; text-transform:uppercase; letter-spacing:.03em;}
   .history-date-label:first-child{margin-top:6px;}
-  .history-row{
-    display:flex; align-items:center; justify-content:space-between; gap:10px;
-    padding:14px 14px; background:var(--surface); border-radius:var(--radius-sm); margin-bottom:8px;
+.history-month{
+    display:flex; align-items:center; gap:12px;
+    margin:22px 0 10px; color:var(--text-faint);
+    font-size:12.5px; letter-spacing:.01em;
   }
-  .history-row .hw-name{font-size:16px; font-weight:700;}
-  .history-row .hw-meta{font-size:13px; color:var(--text-faint); margin-top:2px;}
+  .history-month:first-child{margin-top:6px;}
+  .history-month::after{
+    content:""; flex:1; height:1px; background:var(--border);
+  }
+  .history-row{
+    display:grid; grid-template-columns:46px 1fr 14px;
+    align-items:center; gap:14px;
+    background:var(--surface); border-radius:var(--radius);
+    padding:14px 14px 14px 12px; margin-bottom:8px;
+    cursor:pointer;
+  }
+  .hr-date{
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:1px; padding:6px 0; border-radius:10px; background:var(--surface-2);
+  }
+  .hr-date b{
+    font-size:19px; font-weight:800; line-height:1;
+    color:var(--text); font-variant-numeric:tabular-nums;
+  }
+  .hr-date span{font-size:10.5px; color:var(--text-faint);}
+  /* One gradient per routine, drawn from the theme's own colours so the history
+     stays readable as a set rather than looking like confetti. */
+  .routine-swatch{
+    width:12px; height:12px; border-radius:4px; flex-shrink:0;
+    grid-row:1 / span 2; align-self:center;
+  }
+  .sheet-row-stacked:has(.routine-swatch){
+    display:grid; grid-template-columns:12px 1fr; gap:0 10px; align-items:center;
+  }
+  /* Fallback for engines without :has() — the swatch simply sits inline. */
+  .sheet-row-stacked .routine-swatch{margin-right:10px;}
+  .hue-fill.hue-0{background:linear-gradient(150deg,#ffb04a,#7a4e0f);}
+  .hue-fill.hue-1{background:linear-gradient(150deg,#3fb6e0,#12455c);}
+  .hue-fill.hue-2{background:linear-gradient(150deg,#45d6a0,#16523c);}
+  .hue-fill.hue-3{background:linear-gradient(150deg,#9b7bf0,#3d2a63);}
+  .hue-fill.hue-4{background:linear-gradient(150deg,#f0637f,#5c2033);}
+  .hue-fill.hue-5{background:linear-gradient(150deg,#e2cc4a,#4a4213);}
+  .hue-fill.hue-6{background:linear-gradient(150deg,#6fd0c4,#1c4f49);}
+  .hue-fill.hue-7{background:linear-gradient(150deg,#e08ac0,#54254a);}
+  .hue-fill.hue-8{background:linear-gradient(150deg,#7f9cf5,#27356e);}
+  .hue-fill.hue-9{background:linear-gradient(150deg,#f58a5a,#5e2a14);}
+  .swatch-btn{
+    width:18px; height:18px; border-radius:6px; margin-right:10px;
+    box-shadow:0 0 0 1px rgba(255,255,255,.12) inset;
+  }
+  /* A vertical wheel: one colour per row, scrolled rather than tiled, so nothing
+     can overflow the dialog however many colours there are. */
+  .hue-list-wrap{position:relative; margin-bottom:18px;}
+  .hue-list{
+    height:216px; overflow-y:auto; padding:72px 0;
+    scroll-snap-type:y mandatory; -webkit-overflow-scrolling:touch;
+    scrollbar-width:none; position:relative; z-index:1;
+  }
+  .hue-list::-webkit-scrollbar{display:none;}
+  .hue-row{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    width:100%; height:44px; margin-bottom:8px; padding:0 12px;
+    border-radius:12px; scroll-snap-align:center;
+    box-shadow:0 0 0 1px rgba(255,255,255,.1) inset;
+    transition:transform .12s, box-shadow .12s;
+  }
+  .hue-row.selected{box-shadow:0 0 0 3px var(--accent);}
+  .hue-row-label{
+    font-size:11px; font-weight:800; letter-spacing:.03em; color:#fff;
+    background:rgba(0,0,0,.55); border-radius:6px; padding:3px 7px;
+    max-width:60%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+    margin-left:auto;
+  }
+  /* Marks the row the wheel is centred on. */
+  .hue-cursor{
+    position:absolute; left:-4px; right:-4px; top:50%; height:44px;
+    transform:translateY(-50%); border-radius:14px; pointer-events:none;
+    box-shadow:0 0 0 2px var(--accent); z-index:2;
+  }
+  .hr-date.hue-0{background:linear-gradient(150deg,#7a4e0f,#3a2408);}
+  .hr-date.hue-1{background:linear-gradient(150deg,#12455c,#0a2634);}
+  .hr-date.hue-2{background:linear-gradient(150deg,#16523c,#0b2b20);}
+  .hr-date.hue-3{background:linear-gradient(150deg,#3d2a63,#1f1536);}
+  .hr-date.hue-4{background:linear-gradient(150deg,#5c2033,#30111b);}
+  .hr-date.hue-5{background:linear-gradient(150deg,#4a4213,#26210a);}
+  .hr-date.hue-6{background:linear-gradient(150deg,#1c4f49,#0e2926);}
+  .hr-date.hue-7{background:linear-gradient(150deg,#54254a,#2b1326);}
+  .hr-date.hue-8{background:linear-gradient(150deg,#27356e,#141c39);}
+  .hr-date.hue-9{background:linear-gradient(150deg,#5e2a14,#30160a);}
+  .hr-date b{color:var(--text);}
+  .hr-recent{
+    display:inline-block; margin-left:8px; font-style:normal;
+    font-size:10.5px; font-weight:700; letter-spacing:.02em;
+    color:var(--accent); background:var(--accent-dim);
+    padding:2px 6px; border-radius:5px; vertical-align:middle;
+  }
+  .hr-body{min-width:0;}
+  .hr-name{
+    font-size:16px; font-weight:700; letter-spacing:-0.01em;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .hr-stats{
+    display:flex; gap:12px; margin-top:3px;
+    font-size:12px; color:var(--text-faint);
+  }
+  .hr-stats b{color:var(--text-dim); font-weight:600; font-variant-numeric:tabular-nums;}
+  .hr-volume{display:flex; align-items:center; gap:9px; margin-top:8px;}
+  .hr-bar{
+    flex:1; height:4px; border-radius:2px; background:var(--surface-3); overflow:hidden;
+  }
+  .hr-bar i{
+    display:block; height:100%; border-radius:2px;
+    background:linear-gradient(90deg, var(--accent-dim), var(--accent));
+  }
+  .hr-vol-label{
+    font-size:11.5px; color:var(--text-faint); flex-shrink:0;
+    font-variant-numeric:tabular-nums;
+  }
+  .hr-vol-label b{color:var(--text-dim); font-weight:700;}
   .history-row .chev{color:var(--text-faint); font-size:15px;}
   .empty-state{
     padding:60px 20px; text-align:center; color:var(--text-faint); font-size:14.5px; line-height:1.6;
@@ -414,7 +601,59 @@
   .machine-card .mc-edit{font-size:13.5px; font-weight:600; color:var(--accent);}
   .machine-card .mc-value{font-size:15.5px; color:var(--text); line-height:1.45; white-space:pre-wrap;}
   .machine-card .mc-value.empty{color:var(--text-faint); font-style:italic;}
-  .detail-ex-block{margin-bottom:22px;}
+  /* ---------- Détail d'une séance passée ---------- */
+  .sd-head{display:flex; align-items:center; gap:14px; margin:0 0 18px;}
+  .sd-date{
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    width:54px; padding:8px 0; border-radius:12px; background:var(--surface-2); flex-shrink:0;
+  }
+  .sd-date b{font-size:23px; font-weight:800; line-height:1; font-variant-numeric:tabular-nums;}
+  .sd-date span{font-size:11px; color:var(--text-faint); margin-top:2px;}
+  .sd-head-text{min-width:0;}
+  .sd-title{
+    font-size:22px; font-weight:800; letter-spacing:-0.02em;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .sd-when{font-size:13px; color:var(--text-faint); margin-top:3px;}
+
+  .detail-ex-block{
+    background:var(--surface); border-radius:var(--radius);
+    padding:14px; margin-bottom:10px;
+  }
+  .sd-ex-meta{display:flex; flex-wrap:wrap; gap:6px; margin:8px 0 10px;}
+  .sd-chip{
+    font-size:11.5px; color:var(--text-faint);
+    background:var(--surface-2); border-radius:7px; padding:4px 8px;
+  }
+  .sd-chip b{color:var(--text-dim); font-weight:700; font-variant-numeric:tabular-nums;}
+  .sd-chip.setting{color:var(--text-dim); background:var(--surface-3);}
+  .sd-chip.setting.current{opacity:.6; font-style:italic;}
+
+  .sd-sets{display:flex; flex-direction:column; gap:1px;}
+  .sd-set{
+    display:grid; grid-template-columns:22px 1fr auto auto;
+    align-items:center; gap:10px;
+    padding:8px 8px; border-radius:8px; background:var(--surface-2);
+  }
+  .sd-set.top{background:var(--accent-dim);}
+  .sd-num{
+    font-size:11px; color:var(--text-faint); text-align:center;
+    font-variant-numeric:tabular-nums;
+  }
+  .sd-set.top .sd-num{color:var(--accent);}
+  .sd-perf{font-size:14px; color:var(--text-dim); font-variant-numeric:tabular-nums;}
+  .sd-perf b{color:var(--text); font-weight:700; font-size:16px;}
+  .sd-perf i{color:var(--text-faint); font-style:normal; margin:0 2px;}
+  .sd-effort{
+    width:22px; height:22px; border-radius:6px; font-size:13px; font-weight:700;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .sd-effort.easy{background:rgba(94,234,212,.16); color:var(--green);}
+  .sd-effort.fail{background:rgba(255,107,129,.16); color:var(--red);}
+  .sd-rest{
+    font-size:11.5px; color:var(--text-faint); min-width:38px; text-align:right;
+    font-variant-numeric:tabular-nums;
+  }
   .detail-ex-name{font-size:16px; font-weight:700; margin-bottom:6px;}
   .detail-set-line{
     font-size:14.5px; color:var(--text-dim); padding:5px 0; display:flex; justify-content:space-between;
@@ -580,9 +819,12 @@
   .modal-backdrop.show{opacity:1; pointer-events:auto;}
   .modal{
     background:var(--surface-2); border-radius:18px; padding:22px 20px; width:100%; max-width:320px;
+    /* Never taller or wider than the screen, whatever a dialog puts inside it. */
+    box-sizing:border-box; max-height:calc(100% - 32px); overflow-y:auto;
     transform:scale(.92); transition:transform .15s;
   }
   .modal-backdrop.show .modal{transform:scale(1);}
+  .modal-backdrop{padding:16px;}
   .modal h2{font-size:18px; margin:0 0 4px; font-weight:700;}
   .modal p{font-size:14.5px; color:var(--text-dim); margin:0 0 18px; line-height:1.5;}
   .modal-actions{display:flex; gap:10px;}
@@ -655,7 +897,7 @@
   .hub-ex-name{
     font-size:17px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
   }
-  .hub-ex-name.active{color:var(--accent);}
+  .hub-ex-name.active{color:var(--live);}
   .hub-ex-sub{
     font-size:13.5px; color:var(--text-dim); font-variant-numeric:tabular-nums; margin-top:2px;
     white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
@@ -678,7 +920,7 @@
     font-size:12.5px; font-weight:600; color:var(--text-dim); text-align:right;
     line-height:1.25; padding-right:6px;
   }
-  .hub-action-label.go{color:var(--accent);}
+  .hub-action-label.go{color:var(--live);}
   .hub-action-label.rest{color:var(--blue);}
   .hub-side-right{
     display:flex; flex-direction:column; align-items:flex-end; justify-content:center;
@@ -707,7 +949,7 @@
   }
   .hub-play-btn svg{width:30px; height:30px; margin-left:4px;}
   .hub-play-btn.ready{border-color:var(--accent); color:var(--accent); background:var(--accent-dim);}
-  .hub-play-btn.running{background:var(--accent); border-color:var(--accent); color:#1a0e00;}
+  .hub-play-btn.running{background:var(--live); border-color:var(--live); color:#1a0e00;}
   .hub-play-btn .rest-main{display:block; line-height:1.05;}
   .hub-play-btn .rest-sub-inline{
     display:block; font-size:11px; font-weight:600; opacity:.75; margin-top:2px;
@@ -780,18 +1022,25 @@
   }
 
   /* Bigger, easier-to-hit rows in focus mode. */
-  #control-hub.hub-focus .sets-header-row span{font-size:12px;}
-  #control-hub.hub-focus .set-row{padding:14px 10px; gap:6px;}
-  #control-hub.hub-focus .set-index{font-size:14px;}
-  #control-hub.hub-focus .stepper .val-btn .val{font-size:22px;}
-  #control-hub.hub-focus .stepper .val-btn .u{font-size:12px;}
-  #control-hub.hub-focus .stepper .nudge button{width:26px; height:21px; font-size:9px;}
-  #control-hub.hub-focus .set-prev, #control-hub.hub-focus .set-restafter{font-size:14px;}
-  #control-hub.hub-focus .set-prev-rest{font-size:11.5px;}
-  #control-hub.hub-focus .set-check{width:38px; height:38px; font-size:18px;}
-  #control-hub.hub-focus .set-check svg{width:15px; height:15px;}
-  #control-hub.hub-focus .set-effort{width:38px; height:38px; font-size:18px; border-radius:10px;}
-  #control-hub.hub-focus .add-set-row{padding:16px; font-size:18px;}
+  /* Full screen is the "working" view: everything is sized to be read and hit
+     while standing at the machine, not to fit more rows on screen. */
+  #control-hub.hub-focus .sets-header-row span{font-size:12.5px; letter-spacing:.02em;}
+  #control-hub.hub-focus .set-row{padding:18px 10px; gap:6px;}
+  #control-hub.hub-focus .set-index{font-size:16px;}
+  #control-hub.hub-focus .stepper .val-btn .val{font-size:28px; letter-spacing:-0.02em;}
+  #control-hub.hub-focus .stepper .val-btn .u{font-size:13px;}
+  #control-hub.hub-focus .stepper .nudge button{width:32px; height:26px; font-size:11px;}
+  #control-hub.hub-focus .set-prev, #control-hub.hub-focus .set-restafter{font-size:16px;}
+  #control-hub.hub-focus .set-prev-rest{font-size:13px;}
+  #control-hub.hub-focus .set-live-chrono{font-size:14px;}
+  #control-hub.hub-focus .set-check{width:46px; height:46px; font-size:22px;}
+  #control-hub.hub-focus .set-check svg{width:18px; height:18px;}
+  #control-hub.hub-focus .set-effort{width:44px; height:44px; font-size:21px; border-radius:12px;}
+  #control-hub.hub-focus .set-row.with-effort,
+  #control-hub.hub-focus .sets-header-row.with-effort{
+    grid-template-columns:18px 1fr 0.9fr 0.72fr 0.55fr 46px 54px;
+  }
+  #control-hub.hub-focus .add-set-row{padding:20px; font-size:22px;}
   #control-hub.hub-focus .hub-focus-actions{
     display:flex; justify-content:center; margin-top:18px;
   }
@@ -1009,6 +1258,19 @@
   </div>
 
   <!-- ===================== TEXT INPUT MODAL (rename / create) ===================== -->
+  <div class="modal-backdrop" id="hue-modal">
+    <div class="modal">
+      <h2>Couleur de la séance</h2>
+      <div class="hue-list-wrap">
+        <div class="hue-list" id="hue-list"></div>
+        <div class="hue-cursor" aria-hidden="true"></div>
+      </div>
+      <div class="modal-actions">
+        <button id="hue-modal-cancel">Fermer</button>
+      </div>
+    </div>
+  </div>
+
   <div class="modal-backdrop" id="text-modal">
     <div class="modal">
       <h2 id="text-modal-title">Nouveau</h2>
@@ -1076,9 +1338,9 @@
    ============================================================ */
 // Bumped on every change. Shown in Réglages so it is easy to confirm, in standalone
 // ("app") mode, that a freshly deployed build actually replaced the cached one.
-const APP_VERSION = "1.10.0";
+const APP_VERSION = "1.21.0";
 const APP_BUILD_DATE = "2026-09-18";
-const APP_BUILD_TIME = "14:50:33";
+const APP_BUILD_TIME = "13:16:14";
 
 // Applies the opt-in "stretch to screen" compensation (see Réglages). Re-measured on
 // events that can change the viewport, since the discrepancy is not always present.
@@ -1118,6 +1380,155 @@ window.addEventListener("focus", ()=> setTimeout(forceViewportReflow, 60));
 
 // "overview" keeps the full list on screen with a compact player; "focus" condenses
 // the list and opens the current exercise full screen.
+function applyTheme(){
+  // The alternative theme was briefly called "atelier" before its palette changed.
+  if(state && state.settings && state.settings.theme === "atelier"){
+    state.settings.theme = "indigo";
+  }
+  const t = (state && state.settings && state.settings.theme) || "classique";
+  document.body.classList.toggle("theme-indigo", t === "indigo");
+}
+
+// A routine keeps one badge colour everywhere (picker, history) so cycles are
+// recognisable at a glance. The hue is stored on the routine and editable; the
+// name hash is only a fallback for data written before hues existed.
+const HUE_COUNT = 10;
+
+function hueFromName(name){
+  const key = String(name || "").trim().toLowerCase();
+  let h = 0;
+  for(let i=0; i<key.length; i++) h = (h * 31 + key.charCodeAt(i)) % 997;
+  return h % HUE_COUNT;
+}
+
+// Accepts a routine object, an id, or a name — history rows only carry a name.
+function workoutHue(ref){
+  let w = null;
+  if(ref && typeof ref === "object") w = ref;
+  else if(typeof ref === "string"){
+    w = getWorkout(ref) || state.workouts.find(x=>x.name === ref) || null;
+  }
+  if(w && typeof w.hue === "number") return w.hue % HUE_COUNT;
+  return hueFromName(w ? w.name : ref);
+}
+
+// New routines take a colour nobody is using yet; once all are taken, the least
+// used one. Better than hashing the name, which could collide on the first try.
+// The palette is shown as a vertical wheel. The list is repeated several times so
+// scrolling past either end silently jumps back to an equivalent position, which
+// gives the endless feel without ever building an unbounded list.
+const HUE_WHEEL_REPEATS = 5;
+let hueWheelCtx = null;
+
+function openHuePicker(w){
+  const list = document.getElementById("hue-list");
+  list.innerHTML = "";
+  const current = workoutHue(w);
+
+  // Which routine already holds which colour, so the row can say so.
+  const holders = {};
+  state.workouts.filter(x=>x.id!==w.id).forEach(x=>{
+    const h = workoutHue(x);
+    if(!holders[h]) holders[h] = x.name;
+  });
+
+  for(let rep=0; rep<HUE_WHEEL_REPEATS; rep++){
+    for(let i=0; i<HUE_COUNT; i++){
+      const row = document.createElement("button");
+      row.className = "hue-row hue-fill hue-" + i + (i===current ? " selected" : "");
+      row.dataset.hue = String(i);
+      if(holders[i]){
+        row.title = "Déjà utilisée par « " + holders[i] + " »";
+        const tag = document.createElement("span");
+        tag.className = "hue-row-label";
+        tag.textContent = holders[i];
+        row.appendChild(tag);
+      }
+      row.addEventListener("click", ()=>{
+        w.hue = i;
+        persist();
+        hideBackdrop("hue-modal");
+        renderRoutineSheetContent();
+        renderSeance();
+        if(currentTab === "historique") renderHistorique();
+      });
+      list.appendChild(row);
+    }
+  }
+
+  hueWheelCtx = { list, current };
+  showBackdrop("hue-modal");
+  requestAnimationFrame(()=> centreHueWheel());
+}
+
+function hueRowStride(list){
+  const first = list.firstElementChild;
+  if(!first) return 0;
+  const h = first.offsetHeight;
+  if(!h) return 0; // no layout (e.g. headless): skip the wheel maths entirely
+  const style = window.getComputedStyle(first);
+  return h + (parseFloat(style.marginBottom) || 0);
+}
+
+function centreHueWheel(){
+  if(!hueWheelCtx) return;
+  const { list, current } = hueWheelCtx;
+  const stride = hueRowStride(list);
+  if(!stride) return;
+  const block = stride * HUE_COUNT;
+  const middle = Math.floor(HUE_WHEEL_REPEATS / 2);
+  list.scrollTop = block * middle + current * stride;
+}
+
+document.getElementById("hue-list").addEventListener("scroll", ()=>{
+  if(!hueWheelCtx) return;
+  const list = hueWheelCtx.list;
+  const stride = hueRowStride(list);
+  if(!stride) return;
+  const block = stride * HUE_COUNT;
+  // Keep the viewport inside the middle repeats; jumping by a whole block lands on
+  // the same colour, so the correction is invisible.
+  if(list.scrollTop < block * 0.5) list.scrollTop += block;
+  else if(list.scrollTop > block * (HUE_WHEEL_REPEATS - 1.5)) list.scrollTop -= block;
+});
+
+document.getElementById("hue-modal-cancel").addEventListener("click", ()=> hideBackdrop("hue-modal"));
+
+function pickFreeHue(){
+  const counts = new Array(HUE_COUNT).fill(0);
+  state.workouts.forEach(w=>{
+    const h = (typeof w.hue === "number") ? w.hue % HUE_COUNT : hueFromName(w.name);
+    counts[h]++;
+  });
+  let best = 0;
+  for(let i=1; i<HUE_COUNT; i++){ if(counts[i] < counts[best]) best = i; }
+  return best;
+}
+
+// Existing routines keep the colour they already showed, unless two collide —
+// the later one then moves to a free slot.
+function ensureWorkoutHues(){
+  if(!state || !Array.isArray(state.workouts)) return;
+  const taken = new Set();
+  let changed = false;
+  state.workouts.forEach(w=>{
+    if(typeof w.hue !== "number"){
+      let h = hueFromName(w.name);
+      if(taken.has(h)){
+        const counts = new Array(HUE_COUNT).fill(0);
+        taken.forEach(t=> counts[t]++);
+        let best = 0;
+        for(let i=1; i<HUE_COUNT; i++){ if(counts[i] < counts[best]) best = i; }
+        h = best;
+      }
+      w.hue = h;
+      changed = true;
+    }
+    taken.add(w.hue % HUE_COUNT);
+  });
+  if(changed) persist();
+}
+
 function getViewMode(){
   return (state && state.settings && state.settings.viewMode === "focus") ? "focus" : "overview";
 }
@@ -1151,10 +1562,10 @@ function findByName(exs, name){ return exs.find(e => e.name === name); }
 function buildSeedWorkouts(exs){
   const pick = names => names.map(n => findByName(exs, n)).filter(Boolean).map(e => e.id);
   return [
-    { id: uid("w"), name:"PUSH", order:0, exerciseIds: pick(["Développé couché","Développé incliné","Développé militaire","Élévations latérales","Extension triceps poulie","Dips"]) },
-    { id: uid("w"), name:"PULL", order:1, exerciseIds: pick(["Tractions","Rowing barre","Tirage vertical","Curl biceps haltères","Oiseau","Face pull"]) },
-    { id: uid("w"), name:"LEGS", order:2, exerciseIds: pick(["Squat","Presse à cuisses","Leg curl","Leg extension","Soulevé de terre roumain","Mollets debout"]) },
-    { id: uid("w"), name:"FULL BODY", order:3, exerciseIds: pick(["Squat","Développé couché","Rowing barre","Développé militaire","Soulevé de terre","Tractions"]) },
+    { id: uid("w"), name:"PUSH", order:0, hue:0, exerciseIds: pick(["Développé couché","Développé incliné","Développé militaire","Élévations latérales","Extension triceps poulie","Dips"]) },
+    { id: uid("w"), name:"PULL", order:1, hue:1, exerciseIds: pick(["Tractions","Rowing barre","Tirage vertical","Curl biceps haltères","Oiseau","Face pull"]) },
+    { id: uid("w"), name:"LEGS", order:2, hue:2, exerciseIds: pick(["Squat","Presse à cuisses","Leg curl","Leg extension","Soulevé de terre roumain","Mollets debout"]) },
+    { id: uid("w"), name:"FULL BODY", order:3, hue:3, exerciseIds: pick(["Squat","Développé couché","Rowing barre","Développé militaire","Soulevé de terre","Tractions"]) },
   ];
 }
 
@@ -1208,7 +1619,7 @@ function freshState(){
     workouts: workouts,
     sessions: sessions,
     restTimes: restTimes,
-    settings: { unit:"kg", sound:true, vibration:true, nowBar:"bottom", playerBar:true, viewMode:"overview", stretchToScreen:false },
+    settings: { unit:"kg", sound:true, vibration:true, nowBar:"bottom", playerBar:true, viewMode:"overview", theme:"classique", stretchToScreen:false },
     lastWorkoutId: workouts[0].id,
     currentSessionId: null,
     debugLog: [],
@@ -1222,7 +1633,7 @@ function emptyState(){
     workouts: [],
     sessions: [],
     restTimes: {},
-    settings: { unit:"kg", sound:true, vibration:true, nowBar:"bottom", playerBar:true, viewMode:"overview", stretchToScreen:false },
+    settings: { unit:"kg", sound:true, vibration:true, nowBar:"bottom", playerBar:true, viewMode:"overview", theme:"classique", stretchToScreen:false },
     lastWorkoutId: null,
     currentSessionId: null,
     debugLog: [],
@@ -1512,6 +1923,7 @@ function metric2HeaderLabel(ex){
   return getRepsMode(ex)==="duration" ? "Durée" : "Reps";
 }
 
+const DAYS_FR = ["dim","lun","mar","mer","jeu","ven","sam"];
 const MONTHS_FR = ["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"];
 function isSameDay(d1,d2){ return d1.getFullYear()===d2.getFullYear() && d1.getMonth()===d2.getMonth() && d1.getDate()===d2.getDate(); }
 function formatHistoryDate(iso){
@@ -2284,6 +2696,12 @@ function handleSetStatusTap(ex, s, idx, isDraft, activeSessionBefore){
     // Session-wide marker: how long since ANY set ended, whatever the exercise.
     // Useful while walking to the next machine, when the per-exercise rest is gone.
     session.lastSetDoneAt = Date.now();
+    // Freeze the machine settings in force right now, so editing them later does not
+    // rewrite what you actually used on past sessions.
+    if(ex.machineNote && ex.machineNote.trim()){
+      if(!session.exerciseNotes) session.exerciseNotes = {};
+      session.exerciseNotes[ex.id] = ex.machineNote.trim();
+    }
     beginSessionIfNeeded(session);
     startRest(ex, target);
     logEvent("set_done", { exercise: ex.name, index: idx, execDurationSec: target.execDurationSec, weight: target.weight, reps: target.reps });
@@ -2687,6 +3105,13 @@ function openExerciseInFocus(exId){
 function openMachineNoteEditor(ex, onSaved){
   openTextModal("Réglages machine — " + ex.name, ex.machineNote || "", (val)=>{
     ex.machineNote = val;
+    // Correcting the note mid-session should apply to the session in progress.
+    const live = getActiveSession();
+    if(live && live.sets.some(st=>st.exerciseId===ex.id)){
+      if(!live.exerciseNotes) live.exerciseNotes = {};
+      if(val && val.trim()) live.exerciseNotes[ex.id] = val.trim();
+      else delete live.exerciseNotes[ex.id];
+    }
     persist();
     renderSeance();
     if(currentHistoryExerciseId === ex.id && document.getElementById("screen-exercise-history").classList.contains("active")){
@@ -3472,6 +3897,8 @@ function renderRoutineSheetContent(){
     if(routineSheetEditMode){
       const row = buildManageRow({
         id: w.id, label: w.name, current: currentWorkoutFilter===w.id,
+        hue: workoutHue(w),
+        onHue: ()=> openHuePicker(w),
         subtitle: computeRoutineAverageLabel(w.id),
         onOpen: selectRoutine,
         onRename: ()=> openTextModal("Renommer la séance", w.name, (val)=>{
@@ -3479,7 +3906,7 @@ function renderRoutineSheetContent(){
           w.name = val; persist(); renderRoutineSheetContent();
         }),
         onDuplicate: ()=>{
-          const copy = { id: uid("w"), name: w.name+" copie", order: state.workouts.length, exerciseIds: w.exerciseIds.slice() };
+          const copy = { id: uid("w"), name: w.name+" copie", order: state.workouts.length, exerciseIds: w.exerciseIds.slice(), hue: pickFreeHue() };
           state.workouts.push(copy); persist(); renderRoutineSheetContent();
         },
         onDelete: ()=> openConfirm("Supprimer la séance", "Supprimer « "+w.name+" » ? L'historique des exercices est conservé.", ()=>{
@@ -3494,7 +3921,9 @@ function renderRoutineSheetContent(){
       const row = document.createElement("button");
       row.className = "sheet-row sheet-row-stacked" + (currentWorkoutFilter===w.id ? " selected" : "");
       const routineAvg = computeRoutineAverageLabel(w.id);
-      row.innerHTML = '<span class="sheet-row-name"></span>' + (routineAvg ? '<span class="sheet-row-sub"></span>' : '');
+      // Same colour as this routine's badges in the history, so the two views match.
+      row.innerHTML = '<span class="routine-swatch hue-fill hue-' + workoutHue(w) + '"></span>' +
+        '<span class="sheet-row-name"></span>' + (routineAvg ? '<span class="sheet-row-sub"></span>' : '');
       row.querySelector(".sheet-row-name").textContent = w.name;
       if(routineAvg) row.querySelector(".sheet-row-sub").textContent = routineAvg;
       row.addEventListener("click", selectRoutine);
@@ -3512,7 +3941,7 @@ function renderRoutineSheetContent(){
   newBtn.addEventListener("click", ()=>{
     openTextModal("Nouvelle routine", "", (val)=>{
       if(!val) return;
-      const w = { id: uid("w"), name: val, order: state.workouts.length, exerciseIds: [] };
+      const w = { id: uid("w"), name: val, order: state.workouts.length, exerciseIds: [], hue: pickFreeHue() };
       state.workouts.push(w); persist(); renderRoutineSheetContent();
     });
   });
@@ -3594,25 +4023,58 @@ function renderHistorique(){
     scroll.appendChild(strip);
   }
 
-  let lastLabel = null;
-  sessions.forEach(s=>{
-    const label = formatHistoryDate(s.startDate);
-    if(label !== lastLabel){
-      const dl = document.createElement("div");
-      dl.className = "history-date-label";
-      dl.textContent = label;
-      scroll.appendChild(dl);
-      lastLabel = label;
+  // Precompute the heaviest session so each row's volume bar is relative to it —
+  // the bar answers "was this a big session?" at a glance.
+  const volumes = sessions.map(sx => sx.sets.filter(x=>x.completed && isStandardExercise(getExercise(x.exerciseId)))
+    .reduce((a,x)=>a+x.weight*x.reps, 0));
+  const maxVolume = Math.max(1, ...volumes);
+
+  let lastMonth = null;
+  sessions.forEach((s, si)=>{
+    const d = new Date(s.startDate);
+    const monthKey = d.getFullYear() + "-" + d.getMonth();
+    if(monthKey !== lastMonth){
+      const mh = document.createElement("div");
+      mh.className = "history-month";
+      mh.innerHTML = '<span>' + MONTHS_FR[d.getMonth()] + ' ' + d.getFullYear() + '</span>';
+      scroll.appendChild(mh);
+      lastMonth = monthKey;
     }
+
     const row = document.createElement("div");
     row.className = "history-row";
     const completedSets = s.sets.filter(x=>x.completed);
     const setCount = completedSets.length;
     const standardSets = completedSets.filter(x=>isStandardExercise(getExercise(x.exerciseId)));
-    const totalWeight = standardSets.reduce((a,x)=>a+x.weight*x.reps, 0);
+    const totalWeight = volumes[si];
     const totalReps = standardSets.reduce((a,x)=>a+x.reps, 0);
     const durSec = (new Date(s.endDate) - new Date(s.startDate))/1000;
-    row.innerHTML = '<div><div class="hw-name">'+escapeHtml(s.workoutName)+'</div><div class="hw-meta">'+formatDurationMin(durSec)+' · '+setCount+' série'+(setCount>1?'s':'')+' · '+formatVolume(totalWeight)+' · '+totalReps+' reps</div></div><span class="chev">›</span>';
+    const exCount = new Set(completedSets.map(x=>x.exerciseId)).size;
+    const rel = Math.max(4, Math.round((totalWeight / maxVolume) * 100));
+    const vol = formatVolumeParts(totalWeight);
+    const relLabel = formatHistoryDate(s.startDate);
+    // Only today is worth flagging: "hier" adds nothing the date badge doesn't say.
+    const isToday = relLabel === "Aujourd'hui";
+
+    row.innerHTML =
+      '<div class="hr-date hue-' + workoutHue(getWorkout(s.workoutId) || s.workoutName) + '">' +
+        '<b>' + d.getDate() + '</b>' +
+        '<span>' + DAYS_FR[d.getDay()] + '</span>' +
+      '</div>' +
+      '<div class="hr-body">' +
+        '<div class="hr-name">' + escapeHtml(s.workoutName) +
+          (isToday ? '<em class="hr-recent">' + relLabel + '</em>' : '') + '</div>' +
+        '<div class="hr-stats">' +
+          '<span><b>' + exCount + '</b> exercices</span>' +
+          '<span><b>' + setCount + '</b> séries</span>' +
+          '<span><b>' + formatDurationMin(durSec) + '</b></span>' +
+        '</div>' +
+        '<div class="hr-volume">' +
+          '<div class="hr-bar"><i style="width:' + rel + '%"></i></div>' +
+          '<span class="hr-vol-label"><b>' + vol.value + '</b> ' + vol.unit + '</span>' +
+        '</div>' +
+      '</div>' +
+      '<span class="chev">›</span>';
     row.addEventListener("click", ()=> openSessionDetail(s.id));
     scroll.appendChild(row);
   });
@@ -3629,15 +4091,17 @@ function openSessionDetail(sessionId, preserveEditMode){
   const editBtn = document.getElementById("session-detail-edit-btn");
   editBtn.classList.toggle("active", sessionDetailEditMode);
 
-  const title = document.createElement("h1");
-  title.style.fontSize = "22px";
-  title.style.margin = "0 0 4px";
-  title.textContent = session.workoutName;
-  const sub = document.createElement("div");
-  sub.style.cssText = "color:var(--text-faint); font-size:13px; margin-bottom:18px;";
-  sub.textContent = formatHistoryDate(session.startDate) + " — " + new Date(session.startDate).getDate() + " " + MONTHS_FR[new Date(session.startDate).getMonth()];
-  scroll.appendChild(title);
-  scroll.appendChild(sub);
+  const d0 = new Date(session.startDate);
+  const head = document.createElement("div");
+  head.className = "sd-head";
+  head.innerHTML =
+    '<div class="sd-date"><b>' + d0.getDate() + '</b><span>' + MONTHS_FR[d0.getMonth()].slice(0,4) + '</span></div>' +
+    '<div class="sd-head-text">' +
+      '<div class="sd-title">' + escapeHtml(session.workoutName) + '</div>' +
+      '<div class="sd-when">' + escapeHtml(formatHistoryDate(session.startDate)) + ' · ' +
+        formatTimeHM(session.startDate) + '–' + formatTimeHM(session.endDate) + '</div>' +
+    '</div>';
+  scroll.appendChild(head);
 
   const exIds = [];
   session.sets.forEach(s=>{ if(!exIds.includes(s.exerciseId)) exIds.push(s.exerciseId); });
@@ -3671,10 +4135,6 @@ function openSessionDetail(sessionId, preserveEditMode){
     const nm = document.createElement("div");
     nm.className = "detail-ex-name";
     nm.textContent = ex.name;
-    if(!sessionDetailEditMode){
-      nm.style.cursor = "pointer";
-      nm.addEventListener("click", ()=> openExerciseHistory(exId));
-    }
     block.appendChild(nm);
 
     if(sessionDetailEditMode){
@@ -3699,12 +4159,51 @@ function openSessionDetail(sessionId, preserveEditMode){
       wrap.appendChild(addBtn);
       block.appendChild(wrap);
     } else if(sets.length){
-      sets.forEach((s,i)=>{
+      // The heaviest set is what you actually want to remember from a session,
+      // so it gets called out rather than being buried in the list.
+      const std = isStandardExercise(ex);
+      let topIdx = 0;
+      if(std){
+        sets.forEach((st,i)=>{ if(st.weight > sets[topIdx].weight) topIdx = i; });
+      }
+      const exVolume = std ? sets.reduce((a,st)=>a+st.weight*st.reps, 0) : 0;
+
+      const meta = document.createElement("div");
+      meta.className = "sd-ex-meta";
+      meta.innerHTML =
+        '<span class="sd-chip"><b>' + sets.length + '</b> série' + (sets.length>1?'s':'') + '</span>' +
+        (std ? '<span class="sd-chip"><b>' + formatMetric1(ex, sets[topIdx].weight) + '</b> ' + metric1UnitLabel(ex) + ' max</span>' : '') +
+        (std && exVolume ? '<span class="sd-chip"><b>' + formatVolumeParts(exVolume).value + '</b> ' + formatVolumeParts(exVolume).unit + '</span>' : '') +
+        // The machine setting used that day, in the same chip language.
+        (()=>{
+          // Prefer what was recorded that day; older sessions have no snapshot, so
+          // fall back to the current note and flag it as such.
+          const frozen = session.exerciseNotes && session.exerciseNotes[exId];
+          if(frozen) return '<span class="sd-chip setting">⚙ ' + escapeHtml(frozen) + '</span>';
+          const current = ex.machineNote && ex.machineNote.trim();
+          return current
+            ? '<span class="sd-chip setting current" title="Réglage actuel, non enregistré ce jour-là">⚙ ' + escapeHtml(current) + '</span>'
+            : '';
+        })();
+      block.appendChild(meta);
+
+      const table = document.createElement("div");
+      table.className = "sd-sets";
+      sets.forEach((st,i)=>{
+        const effort = st.effort === "easy" ? '<span class="sd-effort easy">↑</span>'
+                     : st.effort === "fail" ? '<span class="sd-effort fail">✗</span>' : '';
+        const rest = typeof st.restAfterSec === "number"
+          ? '<span class="sd-rest">' + formatMMSS(st.restAfterSec) + '</span>' : '<span class="sd-rest"></span>';
         const line = document.createElement("div");
-        line.className = "detail-set-line";
-        line.innerHTML = '<span>Série '+(i+1)+'</span><b>'+formatMetric1(ex, s.weight)+' × '+formatMetric2(ex, s.reps)+'</b>';
-        block.appendChild(line);
+        line.className = "sd-set" + (std && i === topIdx && sets.length > 1 ? " top" : "");
+        line.innerHTML =
+          '<span class="sd-num">' + (i+1) + '</span>' +
+          '<span class="sd-perf"><b>' + formatMetric1(ex, st.weight) + '</b> ' + metric1UnitLabel(ex) +
+            ' <i>×</i> <b>' + formatMetric2(ex, st.reps) + '</b></span>' +
+          effort + rest;
+        table.appendChild(line);
       });
+      block.appendChild(table);
     }
     scroll.appendChild(block);
   });
@@ -3939,6 +4438,26 @@ function renderParametres(){
   // ---- Affichage : tout ce qui touche à la présentation, regroupé ici ----
   const dispGroup = document.createElement("div");
   dispGroup.className = "settings-group";
+
+  const themeRow = document.createElement("div");
+  themeRow.className = "settings-row";
+  themeRow.innerHTML = '<span class="lbl">Thème</span>';
+  const themeSeg = document.createElement("div");
+  themeSeg.className = "segmented";
+  [["classique","Classique"],["indigo","Indigo"]].forEach(([val,label])=>{
+    const b = document.createElement("button");
+    b.textContent = label;
+    b.className = (((state.settings.theme)||"classique")===val) ? "active" : "";
+    b.addEventListener("click", ()=>{
+      state.settings.theme = val;
+      persist();
+      applyTheme();
+      renderParametres();
+    });
+    themeSeg.appendChild(b);
+  });
+  themeRow.appendChild(themeSeg);
+  dispGroup.appendChild(themeRow);
 
   const modeRow = document.createElement("div");
   modeRow.className = "settings-row";
@@ -4414,8 +4933,13 @@ function buildManageRow(cfg){
   const row = document.createElement("div");
   row.className = "manage-row" + (cfg.subtitle ? " has-subtitle" : "");
   row.innerHTML = (cfg.noDrag ? '<span class="drag-handle drag-handle-spacer"></span>' : '<span class="drag-handle">⋮⋮</span>')
+    + (typeof cfg.hue === "number" ? '<button class="routine-swatch swatch-btn hue-fill hue-' + cfg.hue + '" title="Changer la couleur"></button>' : '')
     + '<span class="rname-block"><span class="rname"></span>' + (cfg.subtitle ? '<span class="rsubtitle"></span>' : '') + '</span>'
     + '<span class="chev">›</span>';
+  const swatchBtn = row.querySelector(".swatch-btn");
+  if(swatchBtn && cfg.onHue){
+    swatchBtn.addEventListener("click", (e)=>{ e.stopPropagation(); cfg.onHue(); });
+  }
   if(cfg.subtitle) row.querySelector(".rsubtitle").textContent = cfg.subtitle;
   const rnameEl = row.querySelector(".rname");
   rnameEl.textContent = cfg.label;
@@ -4640,6 +5164,8 @@ document.querySelectorAll(".tab-btn").forEach(btn=>{
    ============================================================ */
 async function init(){
   await loadState();
+  ensureWorkoutHues();
+  applyTheme();
   applyScreenStretch();
 
   const active = getActiveSession();
