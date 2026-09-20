@@ -2,8 +2,17 @@
 // with no internet connection, after it has been loaded at least once.
 // Keep this in step with APP_VERSION in simple-workout.html: changing it makes the
 // service worker drop the previous cache, so a new build cannot be served stale.
-const CACHE_NAME = "simple-workout-cache-v1.23.0";
-const PRECACHE_URLS = ["./", "./index.html"];
+const CACHE_NAME = "simple-workout-cache-v1.25.0";
+const PRECACHE_URLS = [
+  "./",
+  "./index.html",
+  "./manifest.json",
+  "./favicon-32.png",
+  "./apple-touch-icon.png",
+  "./icon-192.png",
+  "./icon-512.png",
+  "./splash-414x896@2x.png"
+];
 
 self.addEventListener("install", (event) => {
   self.skipWaiting();

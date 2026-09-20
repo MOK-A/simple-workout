@@ -8,6 +8,19 @@
 <meta name="apple-mobile-web-app-title" content="Workout">
 <meta name="theme-color" content="#17171a">
 <link rel="manifest" href="./manifest.json">
+<!-- Inline SVG favicon: no extra request, and it stays crisp at any size. The PNGs
+     below cover iOS/Android home screens, which do not accept SVG. -->
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%230e0e10'/%3E%3Crect x='21' y='46.5' width='58' height='7' rx='3.5' fill='%23d67e00'/%3E%3Crect x='15.5' y='27' width='11' height='46' rx='3.7' fill='%23ff9f0a'/%3E%3Crect x='73.5' y='27' width='11' height='46' rx='3.7' fill='%23ff9f0a'/%3E%3Crect x='29' y='36.5' width='8' height='27' rx='2.7' fill='%23ff9f0a'/%3E%3Crect x='63' y='36.5' width='8' height='27' rx='2.7' fill='%23ff9f0a'/%3E%3C/svg%3E">
+<link rel="icon" type="image/png" sizes="32x32" href="./favicon-32.png">
+<link rel="apple-touch-icon" href="./apple-touch-icon.png">
+<!-- iOS launch images. Each is only used if the device matches exactly, so an
+     unlisted device simply falls back to the in-app splash below. -->
+<link rel="apple-touch-startup-image" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="./splash-414x896@2x.png">
+<link rel="apple-touch-startup-image" media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="./splash-390x844@3x.png">
+<link rel="apple-touch-startup-image" media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="./splash-393x852@3x.png">
+<link rel="apple-touch-startup-image" media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="./splash-430x932@3x.png">
+<link rel="apple-touch-startup-image" media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="./splash-375x812@3x.png">
+<link rel="apple-touch-startup-image" media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="./splash-428x926@3x.png">
 <title>Simple Workout</title>
 <style>
   :root{
@@ -127,6 +140,48 @@
   button{font-family:inherit; color:inherit; background:none; border:none; cursor:pointer; -webkit-user-select:none; user-select:none;}
   input{font-family:inherit; color:inherit;}
   ::selection{background:var(--accent); color:#000;}
+
+  /* Launch screen. Painted from the very first frame so the app never shows a
+     blank rectangle while the stored data is being read, and faded out once the
+     interface is actually on screen. */
+  #splash{
+    position:fixed; inset:0; z-index:200;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:18px; background:#0e0e10;
+    transition:opacity .28s ease;
+  }
+  #splash.hide{opacity:0; pointer-events:none;}
+  #splash.gone{display:none;}
+  .splash-mark{
+    display:flex; align-items:center; justify-content:center;
+    animation:splash-in .45s cubic-bezier(.2,.8,.3,1) both;
+  }
+  .splash-name{
+    font-size:17px; font-weight:700; letter-spacing:.01em; color:#f5f5f7;
+    animation:splash-in .45s .06s cubic-bezier(.2,.8,.3,1) both;
+  }
+  /* A thin bar rather than a spinner: it suggests a set being loaded, and stays
+     calm if the app is ready before it completes. */
+  .splash-bar{
+    width:104px; height:3px; border-radius:2px; overflow:hidden;
+    background:rgba(255,255,255,.1);
+  }
+  .splash-bar i{
+    display:block; width:40%; height:100%; border-radius:2px; background:#ff9f0a;
+    animation:splash-slide 1.05s ease-in-out infinite;
+  }
+  @keyframes splash-in{
+    from{opacity:0; transform:translateY(8px) scale(.96);}
+    to{opacity:1; transform:none;}
+  }
+  @keyframes splash-slide{
+    0%{transform:translateX(-110%);}
+    100%{transform:translateX(360%);}
+  }
+  @media (prefers-reduced-motion: reduce){
+    .splash-mark, .splash-name{animation:none;}
+    .splash-bar i{animation-duration:2.4s;}
+  }
 
   #app-shell{
     /* Pinned straight to the viewport edges. No height:100%, no dvh, no measured
@@ -1111,6 +1166,20 @@
 </style>
 </head>
 <body>
+<div id="splash" aria-hidden="true">
+  <div class="splash-mark">
+    <svg viewBox="0 0 100 100" width="92" height="92" role="img" aria-label="Simple Workout">
+      <rect x="21" y="46.5" width="58" height="7" rx="3.5" fill="#d67e00"/>
+      <rect x="15.5" y="27" width="11" height="46" rx="3.7" fill="#ff9f0a"/>
+      <rect x="73.5" y="27" width="11" height="46" rx="3.7" fill="#ff9f0a"/>
+      <rect x="29" y="36.5" width="8" height="27" rx="2.7" fill="#ff9f0a"/>
+      <rect x="63" y="36.5" width="8" height="27" rx="2.7" fill="#ff9f0a"/>
+    </svg>
+  </div>
+  <div class="splash-name">Simple Workout</div>
+  <div class="splash-bar"><i></i></div>
+</div>
+
 <div id="app-shell">
 
   <!-- ===================== SEANCE ===================== -->
@@ -1359,9 +1428,9 @@
    ============================================================ */
 // Bumped on every change. Shown in Réglages so it is easy to confirm, in standalone
 // ("app") mode, that a freshly deployed build actually replaced the cached one.
-const APP_VERSION = "1.23.0";
+const APP_VERSION = "1.25.0";
 const APP_BUILD_DATE = "2026-09-18";
-const APP_BUILD_TIME = "18:02:06";
+const APP_BUILD_TIME = "21:03:18";
 
 // Applies the opt-in "stretch to screen" compensation (see Réglages). Re-measured on
 // events that can change the viewport, since the discrepancy is not always present.
@@ -5205,7 +5274,26 @@ async function init(){
 
   renderSeance();
   ensureLiveChronoTicker();
+  dismissSplash();
 }
+
+// Fades the launch screen out once the interface is on screen. A minimum on-screen
+// time avoids a jarring flash when the data loads instantly; a safety timer makes
+// sure a failure during init can never leave the splash stuck over the app.
+const SPLASH_SHOWN_AT = Date.now();
+let splashDismissed = false;
+function dismissSplash(){
+  if(splashDismissed) return;
+  splashDismissed = true;
+  const el = document.getElementById("splash");
+  if(!el) return;
+  const wait = Math.max(0, 450 - (Date.now() - SPLASH_SHOWN_AT));
+  setTimeout(()=>{
+    el.classList.add("hide");
+    setTimeout(()=> el.classList.add("gone"), 320);
+  }, wait);
+}
+setTimeout(dismissSplash, 4000);
 
 init();
 
