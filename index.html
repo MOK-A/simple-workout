@@ -67,6 +67,9 @@
     background:#1e1950;
   }
   body.theme-indigo #app-shell{background:var(--bg);}
+  /* Full screen hides the tab bar, so the strip below the viewport should match the
+     page, not the bar — otherwise a grey band appears under the player. */
+  body.focus-active{background:var(--bg);}
   body.theme-indigo #tabbar{background:rgba(30,25,80,0.94);}
   /* Cards lift with a violet-tinted shadow rather than hairline borders. */
   body.theme-indigo .exercise-block,
@@ -635,12 +638,18 @@
     align-items:center; gap:10px;
     padding:8px 8px; border-radius:8px; background:var(--surface-2);
   }
-  .sd-set.top{background:var(--accent-dim);}
+  /* The heaviest set is marked with a thin edge and an accented figure rather than
+     a filled row: noticeable when scanning, quiet when reading the whole list. */
+  .sd-set.top{
+    background:var(--surface-2);
+    box-shadow:inset 2px 0 0 var(--accent);
+  }
   .sd-num{
     font-size:11px; color:var(--text-faint); text-align:center;
     font-variant-numeric:tabular-nums;
   }
   .sd-set.top .sd-num{color:var(--accent);}
+  .sd-set.top .sd-perf b{color:var(--accent);}
   .sd-perf{font-size:14px; color:var(--text-dim); font-variant-numeric:tabular-nums;}
   .sd-perf b{color:var(--text); font-weight:700; font-size:16px;}
   .sd-perf i{color:var(--text-faint); font-style:normal; margin:0 2px;}
@@ -918,7 +927,9 @@
   }
   .hub-action-label{
     font-size:12.5px; font-weight:600; color:var(--text-dim); text-align:right;
-    line-height:1.25; padding-right:6px;
+    line-height:1.35; padding-right:8px;
+    max-width:132px; margin-left:auto;
+    text-wrap:balance; hyphens:none;
   }
   .hub-action-label.go{color:var(--live);}
   .hub-action-label.rest{color:var(--blue);}
@@ -1027,9 +1038,9 @@
   #control-hub.hub-focus .sets-header-row span{font-size:12.5px; letter-spacing:.02em;}
   #control-hub.hub-focus .set-row{padding:18px 10px; gap:6px;}
   #control-hub.hub-focus .set-index{font-size:16px;}
-  #control-hub.hub-focus .stepper .val-btn .val{font-size:28px; letter-spacing:-0.02em;}
+  #control-hub.hub-focus .stepper .val-btn .val{font-size:24px; letter-spacing:-0.02em;}
   #control-hub.hub-focus .stepper .val-btn .u{font-size:13px;}
-  #control-hub.hub-focus .stepper .nudge button{width:32px; height:26px; font-size:11px;}
+  #control-hub.hub-focus .stepper .nudge button{width:28px; height:24px; font-size:10px;}
   #control-hub.hub-focus .set-prev, #control-hub.hub-focus .set-restafter{font-size:16px;}
   #control-hub.hub-focus .set-prev-rest{font-size:13px;}
   #control-hub.hub-focus .set-live-chrono{font-size:14px;}
@@ -1038,8 +1049,18 @@
   #control-hub.hub-focus .set-effort{width:44px; height:44px; font-size:21px; border-radius:12px;}
   #control-hub.hub-focus .set-row.with-effort,
   #control-hub.hub-focus .sets-header-row.with-effort{
-    grid-template-columns:18px 1fr 0.9fr 0.72fr 0.55fr 46px 54px;
+    /* "Avant" and "Repos" carry mm:ss values, so they need real room; the steppers
+       give a little back rather than clipping the times. */
+    grid-template-columns:16px 0.92fr 0.82fr 0.78fr 0.62fr 46px 50px;
+    gap:4px;
   }
+  #control-hub.hub-focus .set-prev,
+  #control-hub.hub-focus .set-restafter{
+    min-width:0; font-size:13.5px; line-height:1.25; white-space:normal;
+  }
+  #control-hub.hub-focus .set-prev-rest{font-size:12px;}
+  #control-hub.hub-focus .set-live-chrono{font-size:13px;}
+  #control-hub.hub-focus .sets-header-row span{font-size:11px; letter-spacing:0;}
   #control-hub.hub-focus .add-set-row{padding:20px; font-size:22px;}
   #control-hub.hub-focus .hub-focus-actions{
     display:flex; justify-content:center; margin-top:18px;
@@ -1338,9 +1359,9 @@
    ============================================================ */
 // Bumped on every change. Shown in Réglages so it is easy to confirm, in standalone
 // ("app") mode, that a freshly deployed build actually replaced the cached one.
-const APP_VERSION = "1.21.0";
+const APP_VERSION = "1.23.0";
 const APP_BUILD_DATE = "2026-09-18";
-const APP_BUILD_TIME = "13:16:14";
+const APP_BUILD_TIME = "18:02:06";
 
 // Applies the opt-in "stretch to screen" compensation (see Réglages). Re-measured on
 // events that can change the viewport, since the discrepancy is not always present.
@@ -2148,6 +2169,7 @@ function switchTab(tab){
   const hubEl = document.getElementById("control-hub");
   if(hubEl) hubEl.classList.remove("hub-focus");
   document.getElementById("app-shell").classList.remove("focus-mode");
+  document.body.classList.remove("focus-active");
   sessionDetailEditMode = false;
   exerciseHistoryEditMode = false;
   if(tab==="seance") renderSeance();
@@ -3072,7 +3094,7 @@ function resetInterface(){
     popScreen("screen-exercise-history");
     const shell = document.getElementById("app-shell");
     if(shell) shell.classList.remove("focus-mode");
-    document.getElementById("app-shell").classList.remove("focus-mode");
+    document.body.classList.remove("focus-active");
 
     // Re-point the view at the running session if there is one.
     const active = getActiveSession();
@@ -3154,6 +3176,7 @@ function renderControlHub(){
     hub.classList.add("hidden");
     hub.classList.remove("hub-focus", "hub-floating");
     document.getElementById("app-shell").classList.remove("focus-mode");
+    document.body.classList.remove("focus-active");
     syncSeanceBottomPadding();
     return;
   }
@@ -3164,6 +3187,7 @@ function renderControlHub(){
   hub.classList.toggle("hub-compact", !hubFocusMode);
   syncCompactInfo();
   document.getElementById("app-shell").classList.toggle("focus-mode", hubFocusMode);
+  document.body.classList.toggle("focus-active", hubFocusMode);
   const expandBtn = document.getElementById("hub-expand-btn");
   expandBtn.title = hubFocusMode ? "Revenir à la liste" : "Mode focus";
   expandBtn.innerHTML = hubFocusMode
@@ -3204,7 +3228,7 @@ function renderControlHub(){
       ? "Repos dépassé · prévu " + formatMMSS(activeRest.targetSec)
       : "Repos en cours · prévu " + formatMMSS(activeRest.targetSec);
     actionEl.className = "hub-action-label rest";
-    actionEl.textContent = "Appuie pour arrêter le repos";
+    actionEl.textContent = "Arrêter le repos";
     // One consistent rest display everywhere: elapsed time is the big figure, with
     // the remaining countdown (or the overshoot) small underneath.
     btn.className = "hub-play-btn resting" + (overtime ? " overtime" : "");
@@ -3217,7 +3241,7 @@ function renderControlHub(){
     btn.onclick = (e)=>{ e.stopPropagation(); stopRest(); };
     nextBtn.classList.toggle("disabled", !upcoming);
     nextBtn.classList.toggle("ready", !!upcoming);
-    nextLabelEl.textContent = upcoming ? "Appuie pour passer à la série suivante" : "";
+    nextLabelEl.textContent = upcoming ? "Série suivante" : "";
     nextBtn.onclick = ()=> hubGoToNextSet();
     const totalEl = document.getElementById("hub-rest-total");
     if(totalEl){
@@ -3274,12 +3298,12 @@ function renderControlHub(){
 
   if(setStatus === "active"){
     actionEl.className = "hub-action-label go";
-    actionEl.textContent = "Série en cours — appuie pour la terminer";
+    actionEl.textContent = "Terminer la série";
     btn.className = "hub-play-btn running";
     btn.innerHTML = "■";
   } else if(setStatus === "done"){
     actionEl.className = "hub-action-label";
-    actionEl.textContent = "Série terminée — passe à la suivante ›";
+    actionEl.textContent = "Série terminée";
     btn.className = "hub-play-btn idle";
     btn.innerHTML = "✓";
   } else {
@@ -3298,7 +3322,7 @@ function renderControlHub(){
   const canAdvance = (setStatus === "done") && !!upcoming;
   nextBtn.classList.toggle("disabled", !canAdvance);
   nextBtn.classList.toggle("ready", canAdvance);
-  nextLabelEl.textContent = canAdvance ? "Appuie pour passer à la série suivante" : "";
+  nextLabelEl.textContent = canAdvance ? "Série suivante" : "";
   nextBtn.onclick = ()=> hubGoToNextSet();
 }
 
