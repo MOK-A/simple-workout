@@ -83,6 +83,7 @@
   /* Full screen hides the tab bar, so the strip below the viewport should match the
      page, not the bar — otherwise a grey band appears under the player. */
   body.focus-active{background:var(--bg);}
+  body.splashing{background:#0e0e10;}
   body.theme-indigo #tabbar{background:rgba(30,25,80,0.94);}
   /* Cards lift with a violet-tinted shadow rather than hairline borders. */
   body.theme-indigo .exercise-block,
@@ -793,6 +794,18 @@
     background:var(--surface); border-radius:var(--radius);
     padding:12px 14px; margin:0 0 16px;
   }
+  .settings-diag .sd-toggle{
+    display:flex; align-items:center; justify-content:space-between; width:100%;
+    font-size:11.5px; font-weight:700; color:var(--text-faint);
+    text-transform:uppercase; letter-spacing:.04em; padding:0;
+  }
+  .settings-diag .sd-chev{
+    font-size:15px; transition:transform .18s; transform:rotate(90deg); letter-spacing:0;
+  }
+  .settings-diag.collapsed .sd-chev{transform:none;}
+  .settings-diag .sd-body{margin-top:8px;}
+  .settings-diag.collapsed .sd-body{display:none;}
+  .settings-diag.collapsed{padding-bottom:12px;}
   .settings-diag .sd-title{
     font-size:11.5px; font-weight:700; color:var(--text-faint);
     text-transform:uppercase; letter-spacing:.04em; margin-bottom:8px;
@@ -1194,7 +1207,7 @@
   .hidden{display:none !important;}
 </style>
 </head>
-<body>
+<body class="splashing">
 <div id="splash" aria-hidden="true">
   <div class="splash-mark">
     <svg viewBox="0 0 100 100" width="92" height="92" role="img" aria-label="Simple Workout">
@@ -1465,16 +1478,19 @@
    ============================================================ */
 // Bumped on every change. Shown in Réglages so it is easy to confirm, in standalone
 // ("app") mode, that a freshly deployed build actually replaced the cached one.
-const APP_VERSION = "1.27.0";
+const APP_VERSION = "1.28.0";
 const APP_BUILD_DATE = "2026-09-21";
-const APP_BUILD_TIME = "08:06:17";
+const APP_BUILD_TIME = "09:19:41";
 
 // Applies the opt-in "stretch to screen" compensation (see Réglages). Re-measured on
 // events that can change the viewport, since the discrepancy is not always present.
 function applyScreenStretch(){
   const shell = document.getElementById("app-shell");
   if(!shell) return;
-  const on = !!(state && state.settings && state.settings.stretchToScreen);
+  // Retired option: the app now fills everything the browser shows, and the hidden
+  // strip is off-screen either way. Forced off so an old saved "on" has no effect.
+  if(state && state.settings) state.settings.stretchToScreen = false;
+  const on = false;
   document.documentElement.style.setProperty("--screen-h", Math.round(window.screen.height) + "px");
   // Hidden strip = screen minus what the browser gives the page (48 on the iPhone 11).
   const gap = Math.max(0, Math.round(window.screen.height - window.innerHeight));
@@ -2249,6 +2265,7 @@ let editMode = false; // inline exercise reorder/remove mode on the Séance scre
 let routineSheetEditMode = false; // read-only by default; toggled by the pencil inside the routine sheet
 let sessionDetailEditMode = false; // read-only by default; toggled by the pencil in a past session's detail view
 let hubFocusMode = false; // full-screen player view
+let diagOpen = false; // diagnostic panel in Réglages, folded by default
 let hubPinnedSetId = null; // set whose rest is showing in the centre button
 let hubFocusExId = null; // exercise the hub is pinned to via its prev/next arrows
 let exerciseHistoryEditMode = false; // read-only by default; toggled by the pencil in an exercise's history view
@@ -4727,24 +4744,6 @@ function renderParametres(){
     '<span class="sv-date">build ' + APP_BUILD_DATE + ' · ' + APP_BUILD_TIME + '</span>';
   scroll.appendChild(versionRow);
 
-  const gapNow = Math.round(window.screen.height - window.innerHeight);
-  if(gapNow > 0 || state.settings.stretchToScreen){
-    const stretchGroup = document.createElement("div");
-    stretchGroup.className = "settings-group";
-    stretchGroup.style.marginTop = "18px";
-    const stretchRow = document.createElement("div");
-    stretchRow.className = "settings-row";
-    stretchRow.innerHTML = '<span class="lbl">Étirer à la hauteur de l\'écran</span>'+
-      '<label class="switch"><input type="checkbox" id="stretch-toggle" '+
-      (state.settings.stretchToScreen ? "checked" : "")+'><span class="slider"></span></label>';
-    stretchGroup.appendChild(stretchRow);
-    const stretchNote = document.createElement("div");
-    stretchNote.className = "settings-inline-note";
-    stretchNote.textContent = "Remplit la bande vide sous les onglets. La barre d'onglets est remontée de l'espace masqué pour rester entièrement visible.";
-    stretchGroup.appendChild(stretchNote);
-    scroll.appendChild(stretchGroup);
-  }
-
   // Viewport diagnostics: the black band under the tab bar could not be reproduced
   // outside a real device, so these are the actual measured values to compare.
   const diag = document.createElement("div");
@@ -4775,12 +4774,19 @@ function renderParametres(){
   // the page. Anything above zero is a strip outside the page that CSS cannot reach.
   const missing = Math.round(window.screen.height - window.innerHeight);
   rows.push(["espace hors page", missing + (missing > 0 ? " ⚠️" : " ✓")]);
-  diag.innerHTML = '<div class="sd-title">Diagnostic affichage</div>' +
+  diag.classList.toggle("collapsed", !diagOpen);
+  diag.innerHTML = '<button class="sd-toggle" type="button">Diagnostic affichage<span class="sd-chev">›</span></button>' +
+    '<div class="sd-body">' +
     rows.map(r => '<div class="sd-row"><span>'+r[0]+'</span><b>'+r[1]+'</b></div>').join("") +
     (missing > 0
       ? '<div class="sd-hint">Le navigateur donne à la page ' + missing +
         ' points de moins que l\'écran. Cette bande est hors de la page : essaie de recréer le raccourci depuis Safari (Partager → Sur l\'écran d\'accueil).</div>'
-      : '');
+      : '') +
+    '</div>';
+  diag.querySelector(".sd-toggle").addEventListener("click", ()=>{
+    diagOpen = !diagOpen;
+    diag.classList.toggle("collapsed", !diagOpen);
+  });
   scroll.appendChild(diag);
 
   const reloadRow = document.createElement("button");
@@ -4789,15 +4795,6 @@ function renderParametres(){
   reloadRow.addEventListener("click", forceReload);
   scroll.appendChild(reloadRow);
 
-  const stretchToggle = document.getElementById("stretch-toggle");
-  if(stretchToggle){
-    stretchToggle.addEventListener("change", (e)=>{
-      state.settings.stretchToScreen = e.target.checked;
-      persist();
-      applyScreenStretch();
-      renderParametres();
-    });
-  }
   document.getElementById("player-toggle").addEventListener("change", (e)=>{
     state.settings.playerBar = e.target.checked;
     if(!e.target.checked) hubFocusMode = false;
@@ -5330,7 +5327,7 @@ function dismissSplash(){
   const wait = Math.max(0, 450 - (Date.now() - SPLASH_SHOWN_AT));
   setTimeout(()=>{
     el.classList.add("hide");
-    setTimeout(()=> el.classList.add("gone"), 320);
+    setTimeout(()=>{ el.classList.add("gone"); document.body.classList.remove("splashing"); }, 320);
   }, wait);
 }
 setTimeout(dismissSplash, 4000);
