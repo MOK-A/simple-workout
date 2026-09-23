@@ -616,6 +616,7 @@
   .import-actions button.danger-outline{
     background:transparent; color:var(--red); box-shadow:0 0 0 1px var(--red) inset;
   }
+  .sd-saveas{margin:2px 0 18px;}
   .import-hint{
     font-size:12px; color:var(--text-faint); text-align:center; margin:-2px 0 8px;
   }
@@ -1413,6 +1414,14 @@
   </div>
 
   <!-- ===================== TEXT INPUT MODAL (rename / create) ===================== -->
+  <div class="modal-backdrop" id="choice-modal">
+    <div class="modal">
+      <h2 id="choice-modal-title">Choisir</h2>
+      <p id="choice-modal-message"></p>
+      <div class="import-actions" id="choice-modal-options"></div>
+    </div>
+  </div>
+
   <div class="modal-backdrop" id="import-modal">
     <div class="modal">
       <h2>Importer ces données</h2>
@@ -1507,9 +1516,9 @@
    ============================================================ */
 // Bumped on every change. Shown in Réglages so it is easy to confirm, in standalone
 // ("app") mode, that a freshly deployed build actually replaced the cached one.
-const APP_VERSION = "1.31.0";
+const APP_VERSION = "1.33.0";
 const APP_BUILD_DATE = "2026-09-22";
-const APP_BUILD_TIME = "06:09:21";
+const APP_BUILD_TIME = "21:43:07";
 
 // Applies the opt-in "stretch to screen" compensation (see Réglages). Re-measured on
 // events that can change the viewport, since the discrepancy is not always present.
@@ -2484,6 +2493,15 @@ function renderSeance(){
   bottomActions.className = "list-bottom-actions";
 
   if(getActiveSession()){
+    const saveAsBtn = document.createElement("button");
+    saveAsBtn.className = "bottom-action";
+    saveAsBtn.textContent = "Enregistrer comme nouvelle séance";
+    saveAsBtn.addEventListener("click", ()=>{
+      const live = getActiveSession();
+      if(live) saveSessionAsWorkout(live, { suggestedName: live.workoutName + " (court)" });
+    });
+    bottomActions.appendChild(saveAsBtn);
+
     const stopBtn = document.createElement("button");
     stopBtn.className = "bottom-action danger";
     stopBtn.textContent = "Arrêter la séance";
@@ -4299,7 +4317,18 @@ function openSessionDetail(sessionId, preserveEditMode){
       '<div class="sd-when">' + escapeHtml(formatHistoryDate(session.startDate)) + ' · ' +
         formatTimeHM(session.startDate) + '–' + formatTimeHM(session.endDate) + '</div>' +
     '</div>';
+  head.querySelector(".sd-title").style.cursor = "pointer";
+  head.querySelector(".sd-title").addEventListener("click", ()=> renameSessionFlow(session));
   scroll.appendChild(head);
+
+  // Turning a past session into its own routine, after the fact.
+  const saveAs = document.createElement("button");
+  saveAs.className = "bottom-action sd-saveas";
+  saveAs.textContent = "Créer une séance avec ces exercices";
+  saveAs.addEventListener("click", ()=> saveSessionAsWorkout(session, {
+    suggestedName: session.workoutName + " (court)"
+  }));
+  scroll.appendChild(saveAs);
 
   const exIds = [];
   session.sets.forEach(s=>{ if(!exIds.includes(s.exerciseId)) exIds.push(s.exerciseId); });
@@ -5066,6 +5095,177 @@ document.getElementById("import-file-input").addEventListener("change", (e)=>{
 // up side by side: an old export holding one session, and a backup holding
 // another. Merging adds what is missing and never removes anything.
 let importCtx = null;
+
+// A small dialog offering several courses of action, used wherever a single
+// "OK / Cancel" would force a choice the user should be making explicitly.
+function openChoiceModal(title, message, options){
+  document.getElementById("choice-modal-title").textContent = title;
+  document.getElementById("choice-modal-message").textContent = message;
+  const box = document.getElementById("choice-modal-options");
+  box.innerHTML = "";
+  options.forEach(opt=>{
+    const b = document.createElement("button");
+    b.textContent = opt.label;
+    if(opt.kind === "primary") b.className = "primary";
+    if(opt.kind === "danger") b.className = "danger-outline";
+    b.addEventListener("click", ()=>{
+      hideBackdrop("choice-modal");
+      if(opt.onPick) opt.onPick();
+    });
+    box.appendChild(b);
+    if(opt.hint){
+      const h = document.createElement("span");
+      h.className = "import-hint";
+      h.textContent = opt.hint;
+      box.appendChild(h);
+    }
+  });
+  const cancel = document.createElement("button");
+  cancel.textContent = "Annuler";
+  cancel.addEventListener("click", ()=> hideBackdrop("choice-modal"));
+  box.appendChild(cancel);
+  showBackdrop("choice-modal");
+}
+
+// The exercises actually performed in a session, in the order they were done.
+// A planned-but-skipped exercise has no completed set and is deliberately left out:
+// the whole point is to capture what the session really was.
+function exercisesPerformed(session){
+  const ids = [];
+  (session.sets || [])
+    .filter(st=>st.completed)
+    .forEach(st=>{ if(!ids.includes(st.exerciseId)) ids.push(st.exerciseId); });
+  return ids.filter(id=>!!getExercise(id));
+}
+
+// Builds a new routine from those exercises. Existing routines are never touched.
+function createWorkoutFromSession(session, name){
+  const exerciseIds = exercisesPerformed(session);
+  if(!exerciseIds.length) return null;
+  const w = {
+    id: uid("w"),
+    name: name,
+    order: state.workouts.length,
+    exerciseIds: exerciseIds,
+    hue: pickFreeHue()
+  };
+  state.workouts.push(w);
+  logEvent("workout_created_from_session", {
+    name: name, from: session.workoutName, exercises: exerciseIds.length
+  });
+  return w;
+}
+
+// Offers to save the performed exercises as a new routine, optionally re-pointing
+// the session at it.
+function saveSessionAsWorkout(session, opts){
+  const performed = exercisesPerformed(session);
+  if(!performed.length){
+    showSimpleAlert("Rien à enregistrer", "Aucune série terminée dans cette séance pour le moment.");
+    return;
+  }
+  const suggestion = (opts && opts.suggestedName) || (session.workoutName + " (court)");
+  openTextModal("Nom de la nouvelle séance", suggestion, (name)=>{
+    const clean = (name || "").trim();
+    if(!clean) return;
+    const w = createWorkoutFromSession(session, clean);
+    if(!w) return;
+
+    // "Save as" means this session becomes an instance of the new routine — so it
+    // takes its name too. Creating the routine while leaving the session labelled
+    // with the old one was the bug.
+    const wasActive = getActiveSession() && getActiveSession().id === session.id;
+    session.workoutId = w.id;
+    session.workoutName = w.name;
+    if(wasActive){
+      // Keep the Séance screen pointing at what is now being performed.
+      currentWorkoutFilter = w.id;
+      state.lastWorkoutId = w.id;
+    }
+    persist();
+    renderSeance();
+    if(currentTab === "historique") renderHistorique();
+    // Refresh the open detail view so its title shows the new name straight away.
+    if(document.getElementById("screen-session-detail").classList.contains("active")
+       && currentHistorySessionId === session.id){
+      openSessionDetail(session.id, true);
+    }
+    showSimpleAlert("Séance créée",
+      "« " + clean + " » a été créée avec " + performed.length + " exercice" +
+      (performed.length > 1 ? "s" : "") + ", et cette séance y est désormais rattachée. " +
+      "Tes autres séances n'ont pas changé.");
+  });
+}
+
+// Renaming a past session is ambiguous: it can mean "I mislabelled this one",
+// "this routine is now called that", or "this was actually a different workout".
+// Rather than guess, the three are offered explicitly.
+function renameSessionFlow(session){
+  openTextModal("Nom de la séance", session.workoutName || "", (val)=>{
+    const name = (val || "").trim();
+    if(!name || name === session.workoutName) return;
+
+    const sameType = state.sessions.filter(x =>
+      x.status === "completed" &&
+      (session.workoutId ? x.workoutId === session.workoutId : x.workoutName === session.workoutName));
+    const others = sameType.length - 1;
+    const performed = exercisesPerformed(session).length;
+
+    const options = [
+      {
+        label: "Cette séance seulement",
+        hint: "Les autres gardent leur nom.",
+        onPick: ()=>{
+          session.workoutName = name;
+          session.workoutId = null; // detached: it no longer belongs to that routine
+          persist();
+          openSessionDetail(session.id, true);
+          renderHistorique();
+        }
+      }
+    ];
+
+    if(others > 0 || session.workoutId){
+      options.push({
+        label: "Toutes les séances de ce type",
+        hint: others > 0
+          ? others + " autre" + (others > 1 ? "s" : "") + " séance" + (others > 1 ? "s" : "") + " et la séance-type."
+          : "Renomme aussi la séance-type.",
+        kind: "primary",
+        onPick: ()=>{
+          sameType.forEach(x=>{ x.workoutName = name; });
+          const w = session.workoutId ? getWorkout(session.workoutId) : null;
+          if(w) w.name = name;
+          persist();
+          openSessionDetail(session.id, true);
+          renderHistorique();
+          renderSeance();
+        }
+      });
+    }
+
+    if(performed){
+      options.push({
+        label: "Créer une séance-type « " + name + " »",
+        hint: "Avec les " + performed + " exercice" + (performed > 1 ? "s" : "") + " réalisé" +
+              (performed > 1 ? "s" : "") + ", et rattacher cette séance.",
+        onPick: ()=>{
+          const w = createWorkoutFromSession(session, name);
+          if(!w) return;
+          session.workoutId = w.id;
+          session.workoutName = name;
+          persist();
+          openSessionDetail(session.id, true);
+          renderHistorique();
+          renderSeance();
+        }
+      });
+    }
+
+    openChoiceModal("Renommer en « " + name + " »",
+      "À quoi ce changement doit-il s'appliquer ?", options);
+  });
+}
 
 function openImportChoice(parsed, fileSessions, mineSessions){
   importCtx = parsed;
