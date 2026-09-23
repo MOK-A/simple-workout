@@ -2,7 +2,7 @@
 // with no internet connection, after it has been loaded at least once.
 // Keep this in step with APP_VERSION in simple-workout.html: changing it makes the
 // service worker drop the previous cache, so a new build cannot be served stale.
-const CACHE_NAME = "simple-workout-cache-v1.28.0";
+const CACHE_NAME = "simple-workout-cache-v1.31.0";
 const PRECACHE_URLS = [
   "./",
   "./index.html",

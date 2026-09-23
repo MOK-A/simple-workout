@@ -350,11 +350,14 @@
     font-size:13px; color:var(--text-faint); margin-bottom:10px;
   }
   .exercise-avg b{color:var(--text-dim); font-weight:500;}
+  /* The note shares its background with the sets card just below it, so without a
+     clear gap and a lighter surface the two read as one overlapping block. */
   .exercise-machine-note{
     display:inline-flex; align-items:center; gap:6px; cursor:pointer;
-    margin:6px 0 2px; padding:5px 10px; border-radius:8px;
-    background:var(--surface); border-left:2px solid var(--accent);
+    margin:9px 0 11px; padding:6px 11px; border-radius:8px;
+    background:var(--surface-2); border-left:2px solid var(--accent);
     font-size:13px; color:var(--text-dim); line-height:1.35;
+    vertical-align:middle;
   }
   .exercise-machine-note::before{
     content:"⚙"; color:var(--accent); font-size:12px;
@@ -604,6 +607,18 @@
   }
   /* A vertical wheel: one colour per row, scrolled rather than tiled, so nothing
      can overflow the dialog however many colours there are. */
+  .import-actions{display:flex; flex-direction:column; gap:6px;}
+  .import-actions button{
+    padding:13px; border-radius:11px; font-size:15px; font-weight:600;
+    background:var(--surface-3);
+  }
+  .import-actions button.primary{background:var(--accent); color:#1a0e00;}
+  .import-actions button.danger-outline{
+    background:transparent; color:var(--red); box-shadow:0 0 0 1px var(--red) inset;
+  }
+  .import-hint{
+    font-size:12px; color:var(--text-faint); text-align:center; margin:-2px 0 8px;
+  }
   .hue-list-wrap{position:relative; margin-bottom:18px;}
   .hue-list{
     height:216px; overflow-y:auto; padding:72px 0;
@@ -1398,6 +1413,20 @@
   </div>
 
   <!-- ===================== TEXT INPUT MODAL (rename / create) ===================== -->
+  <div class="modal-backdrop" id="import-modal">
+    <div class="modal">
+      <h2>Importer ces données</h2>
+      <p id="import-modal-summary"></p>
+      <div class="import-actions">
+        <button id="import-merge" class="primary">Fusionner</button>
+        <span class="import-hint">Ajoute ce qui manque, sans rien supprimer.</span>
+        <button id="import-replace" class="danger-outline">Remplacer tout</button>
+        <span class="import-hint">Efface les données actuelles au profit du fichier.</span>
+        <button id="import-cancel">Annuler</button>
+      </div>
+    </div>
+  </div>
+
   <div class="modal-backdrop" id="hue-modal">
     <div class="modal">
       <h2>Couleur de la séance</h2>
@@ -1478,9 +1507,9 @@
    ============================================================ */
 // Bumped on every change. Shown in Réglages so it is easy to confirm, in standalone
 // ("app") mode, that a freshly deployed build actually replaced the cached one.
-const APP_VERSION = "1.28.0";
-const APP_BUILD_DATE = "2026-09-21";
-const APP_BUILD_TIME = "09:19:41";
+const APP_VERSION = "1.31.0";
+const APP_BUILD_DATE = "2026-09-22";
+const APP_BUILD_TIME = "06:09:21";
 
 // Applies the opt-in "stretch to screen" compensation (see Réglages). Re-measured on
 // events that can change the viewport, since the discrepancy is not always present.
@@ -2186,6 +2215,7 @@ function ensureExerciseActive(session, exerciseId){
 
 function cycleExerciseState(exerciseId, workoutIdForNaming){
   const session = materializeExercise(exerciseId, workoutIdForNaming);
+  closeFinishedExercises(session, exerciseId);
   hubFocusExId = exerciseId;
   hubPinnedSetId = null;
   if(!session.exerciseState) session.exerciseState = {};
@@ -2824,6 +2854,10 @@ function getSetStatus(s, isDraft){
 function handleSetStatusTap(ex, s, idx, isDraft, activeSessionBefore){
   const w = currentWorkoutFilter==="ALL" ? findWorkoutContaining(ex.id) : currentWorkoutFilter;
   const session = materializeExercise(ex.id, w);
+  // Touching a set in another exercise means the previous one is behind us: close
+  // any finished exercise still marked active, or its chrono keeps running for the
+  // rest of the session (the rower was still counting after 30 minutes).
+  closeFinishedExercises(session, ex.id);
   // Acting on a set from the list loads it into the player bar.
   hubFocusExId = ex.id;
   const setsForEx = session.sets.filter(st=>st.exerciseId===ex.id).sort((a,b)=>a.order-b.order);
@@ -3520,6 +3554,17 @@ function findNextIncompleteSet(afterSetId){
 
 // When every set of an exercise is done and we move on, its chrono must stop —
 // otherwise it keeps running in the background for the rest of the session.
+// Closes every exercise that is still marked active although all of its sets are
+// done — except the one being worked on. Called whenever attention moves to
+// another exercise, whatever route was taken to get there.
+function closeFinishedExercises(session, exceptExerciseId){
+  if(!session || !session.exerciseState) return;
+  Object.keys(session.exerciseState).forEach(exId=>{
+    if(exId === exceptExerciseId) return;
+    finishExerciseIfComplete(session, exId);
+  });
+}
+
 function finishExerciseIfComplete(session, exerciseId){
   if(!session || !exerciseId || !session.exerciseState) return;
   const st = session.exerciseState[exerciseId];
@@ -4133,6 +4178,9 @@ document.getElementById("finish-modal-save").addEventListener("click", ()=>{
     logEvent("session_finish", { workoutName: session.workoutName, setCount });
     persist();
     savedSessionId = session.id;
+    // A finished session is the most valuable thing in here: snapshot it straight
+    // away so a later mishap cannot take it with the rest.
+    saveSafetySnapshot("fin de séance " + session.workoutName).then(refreshSnapshotMeta);
   }
   hideBackdrop("finish-modal");
   clearDraftCache();
@@ -4700,14 +4748,17 @@ function renderParametres(){
   importRow.addEventListener("click", ()=> document.getElementById("import-file-input").click());
   dataGroup.appendChild(importRow);
 
-  if(lastSnapshotMeta){
-    const undoRow = document.createElement("button");
-    undoRow.className = "settings-action-row";
-    undoRow.innerHTML = '<span class="lbl">Revenir en arrière<span class="sub-lbl">avant ' +
-      escapeHtml(lastSnapshotMeta.reason || "une modification") + ' · ' +
-      escapeHtml(formatSnapshotDate(lastSnapshotMeta.at)) + '</span></span><span class="chev">›</span>';
-    undoRow.addEventListener("click", restoreSafetySnapshot);
-    dataGroup.appendChild(undoRow);
+  if(snapshotList.length){
+    snapshotList.forEach((snap, i)=>{
+      const row = document.createElement("button");
+      row.className = "settings-action-row";
+      const count = typeof snap.sessions === "number" ? snap.sessions + " séances · " : "";
+      row.innerHTML = '<span class="lbl">' + (i === 0 ? "Revenir en arrière" : "Sauvegarde précédente") +
+        '<span class="sub-lbl">' + count + escapeHtml(formatSnapshotDate(snap.at)) + ' · ' +
+        escapeHtml(snap.reason || "modification") + '</span></span><span class="chev">›</span>';
+      row.addEventListener("click", ()=> restoreSafetySnapshot(i));
+      dataGroup.appendChild(row);
+    });
   }
 
   const demoRow = document.createElement("button");
@@ -4854,39 +4905,82 @@ async function readRawKey(key){
   try{ return localStorage.getItem(key); }catch(e){ return null; }
 }
 
+// Up to this many backups are kept. A single slot that overwrites itself is no
+// protection when a loss is only noticed days later, which is exactly what
+// happened to the 18/09 session.
+const SNAPSHOT_KEEP = 8;
+
+async function readSnapshots(){
+  const raw = await readRawKey(SNAPSHOT_KEY);
+  if(!raw) return [];
+  try{
+    const parsed = JSON.parse(raw);
+    if(Array.isArray(parsed)) return parsed;
+    // Older format: one object. Keep it as the first entry rather than dropping it.
+    if(parsed && parsed.state) return [parsed];
+  }catch(e){}
+  return [];
+}
+
+// Replacing the whole state also replaces the debug log, which means these
+// operations used to erase their own trace — the reason the 18/09 loss could not
+// be explained from the log. The previous log tail is carried over and the
+// replacement is recorded in it.
+function carryLogThroughReplacement(previousLog, what, details){
+  const tail = Array.isArray(previousLog) ? previousLog.slice(-150) : [];
+  if(!Array.isArray(state.debugLog)) state.debugLog = [];
+  state.debugLog = tail.concat(state.debugLog);
+  logEvent("data_replaced", Object.assign({ operation: what }, details || {}));
+}
+
 async function saveSafetySnapshot(reason){
   try{
-    const payload = JSON.stringify({ at: new Date().toISOString(), reason, state });
-    return await writeRawKey(SNAPSHOT_KEY, payload);
+    const list = await readSnapshots();
+    list.unshift({
+      at: new Date().toISOString(),
+      reason,
+      sessions: (state.sessions || []).filter(x=>x.status === "completed").length,
+      state
+    });
+    return await writeRawKey(SNAPSHOT_KEY, JSON.stringify(list.slice(0, SNAPSHOT_KEEP)));
   }catch(e){ return false; }
 }
 
 let lastSnapshotMeta = null;
+let snapshotList = [];
 async function refreshSnapshotMeta(){
-  const raw = await readRawKey(SNAPSHOT_KEY);
-  if(!raw){ lastSnapshotMeta = null; return; }
-  try{
-    const parsed = JSON.parse(raw);
-    lastSnapshotMeta = { at: parsed.at, reason: parsed.reason };
-  }catch(e){ lastSnapshotMeta = null; }
+  snapshotList = await readSnapshots();
+  lastSnapshotMeta = snapshotList.length
+    ? { at: snapshotList[0].at, reason: snapshotList[0].reason }
+    : null;
 }
 
-async function restoreSafetySnapshot(){
-  const raw = await readRawKey(SNAPSHOT_KEY);
-  if(!raw){ showSimpleAlert("Aucune sauvegarde", "Aucune sauvegarde automatique n'est disponible."); return; }
-  let parsed;
-  try{ parsed = JSON.parse(raw); }
-  catch(e){ showSimpleAlert("Sauvegarde illisible", "La sauvegarde automatique n'a pas pu être lue."); return; }
-  if(!parsed || !parsed.state){ showSimpleAlert("Sauvegarde illisible", "La sauvegarde automatique est incomplète."); return; }
+async function restoreSafetySnapshot(index){
+  const list = await readSnapshots();
+  const parsed = list[index || 0];
+  if(!parsed || !parsed.state){
+    showSimpleAlert("Sauvegarde indisponible", "Cette sauvegarde n'a pas pu être lue.");
+    return;
+  }
 
+  const count = typeof parsed.sessions === "number"
+    ? " Elle contient " + parsed.sessions + " séance" + (parsed.sessions > 1 ? "s" : "") + " terminée" + (parsed.sessions > 1 ? "s" : "") + "."
+    : "";
   openConfirm(
-    "Revenir en arrière",
-    "Restaurer les données telles qu'elles étaient le " + formatSnapshotDate(parsed.at) +
-    ", juste avant : " + (parsed.reason || "une modification") + ". Les données actuelles seront remplacées.",
+    "Restaurer cette sauvegarde",
+    "Revenir aux données du " + formatSnapshotDate(parsed.at) +
+    " (" + (parsed.reason || "modification") + ")." + count + " Les données actuelles seront remplacées.",
     async ()=>{
       // Snapshot the current data first, so this restore is itself reversible.
       await saveSafetySnapshot("restauration d'une sauvegarde");
+      const prevLogRestore = state.debugLog;
+      const prevCountRestore = (state.sessions || []).filter(x=>x.status==="completed").length;
       state = parsed.state;
+      carryLogThroughReplacement(prevLogRestore, "restauration", {
+        snapshotDate: parsed.at,
+        sessionsBefore: prevCountRestore,
+        sessionsAfter: (state.sessions || []).filter(x=>x.status==="completed").length
+      });
       if(!Array.isArray(state.debugLog)) state.debugLog = [];
       currentWorkoutFilter = (state.lastWorkoutId && getWorkout(state.lastWorkoutId))
         ? state.lastWorkoutId
@@ -4958,32 +5052,119 @@ document.getElementById("import-file-input").addEventListener("change", (e)=>{
       showSimpleAlert("Import impossible", "Ce fichier ne correspond pas à un export Simple Workout valide.");
       return;
     }
-    openConfirm(
-      "Importer ces données",
-      "Cela remplacera toutes tes données actuelles (séances, exercices, historique) par le contenu de ce fichier. Cette action est irréversible.",
-      async ()=>{
-        await saveSafetySnapshot("import de données");
-        if(!Array.isArray(parsed.debugLog)) parsed.debugLog = [];
-        if(!parsed.settings) parsed.settings = { unit:"kg", sound:true, vibration:true };
-        if(!parsed.restTimes) parsed.restTimes = {};
-        state = parsed;
-        currentWorkoutFilter = (state.lastWorkoutId && getWorkout(state.lastWorkoutId)) ? state.lastWorkoutId : (state.workouts.length ? state.workouts[0].id : "ALL");
-        editMode = false;
-        routineSheetEditMode = false;
-        clearDraftCache();
-        activeRest = null;
-        clearInterval(restTicker);
-        restTicker = null;
-        persist();
-        switchTab(currentTab);
-      },
-      "Importer"
-    );
+    const fileSessions = parsed.sessions.filter(x=>x.status === "completed").length;
+    const mineSessions = (state.sessions || []).filter(x=>x.status === "completed").length;
+    openImportChoice(parsed, fileSessions, mineSessions);
   };
   reader.onerror = ()=>{
     showSimpleAlert("Import impossible", "Impossible de lire ce fichier.");
   };
   reader.readAsText(file);
+});
+
+// Importing used to be all-or-nothing, which is how two partial datasets can end
+// up side by side: an old export holding one session, and a backup holding
+// another. Merging adds what is missing and never removes anything.
+let importCtx = null;
+
+function openImportChoice(parsed, fileSessions, mineSessions){
+  importCtx = parsed;
+  const newOnes = parsed.sessions.filter(x =>
+    x.status === "completed" && !(state.sessions || []).some(y => y.id === x.id)).length;
+  document.getElementById("import-modal-summary").textContent =
+    "Ce fichier contient " + fileSessions + " séance" + (fileSessions > 1 ? "s" : "") +
+    " terminée" + (fileSessions > 1 ? "s" : "") + ", dont " + newOnes +
+    " que tu n'as pas actuellement. Tes données en comptent " + mineSessions + ".";
+  showBackdrop("import-modal");
+}
+
+document.getElementById("import-cancel").addEventListener("click", ()=>{
+  importCtx = null;
+  hideBackdrop("import-modal");
+});
+
+// Everything is matched on id, so re-importing the same file twice changes nothing.
+function mergeImported(parsed){
+  const added = { workouts:0, exercises:0, sessions:0 };
+
+  (parsed.exercises || []).forEach(ex=>{
+    if(!state.exercises.some(x=>x.id === ex.id)){ state.exercises.push(ex); added.exercises++; }
+  });
+  (parsed.workouts || []).forEach(w=>{
+    if(!state.workouts.some(x=>x.id === w.id)){
+      state.workouts.push(Object.assign({}, w, { order: state.workouts.length }));
+      added.workouts++;
+    }
+  });
+  (parsed.sessions || []).forEach(se=>{
+    if(se.status !== "completed") return; // a half-finished draft is not worth merging
+    if(!state.sessions.some(x=>x.id === se.id)){ state.sessions.push(se); added.sessions++; }
+  });
+  Object.keys(parsed.restTimes || {}).forEach(k=>{
+    if(state.restTimes[k] === undefined) state.restTimes[k] = parsed.restTimes[k];
+  });
+  state.sessions.sort((a,b)=> new Date(a.startDate || 0) - new Date(b.startDate || 0));
+  ensureWorkoutHues();
+  return added;
+}
+
+document.getElementById("import-merge").addEventListener("click", async ()=>{
+  const parsed = importCtx;
+  if(!parsed) return;
+  importCtx = null;
+  hideBackdrop("import-modal");
+  await saveSafetySnapshot("fusion d'un import");
+  const before = (state.sessions || []).filter(x=>x.status === "completed").length;
+  const added = mergeImported(parsed);
+  logEvent("data_merged", {
+    sessionsBefore: before,
+    sessionsAdded: added.sessions,
+    exercisesAdded: added.exercises,
+    workoutsAdded: added.workouts
+  });
+  persist();
+  await refreshSnapshotMeta();
+  switchTab("historique");
+  showSimpleAlert("Fusion terminée",
+    added.sessions + " séance" + (added.sessions > 1 ? "s" : "") + " ajoutée" +
+    (added.sessions > 1 ? "s" : "") + ", " + added.exercises + " exercice" +
+    (added.exercises > 1 ? "s" : "") + ", " + added.workouts + " séance-type. Rien n'a été supprimé.");
+});
+
+document.getElementById("import-replace").addEventListener("click", ()=>{
+  const parsed = importCtx;
+  if(!parsed) return;
+  importCtx = null;
+  hideBackdrop("import-modal");
+  openConfirm(
+    "Remplacer toutes les données",
+    "Tes données actuelles seront effacées et remplacées par le contenu du fichier. Une sauvegarde automatique est prise avant.",
+    async ()=>{
+      await saveSafetySnapshot("import (remplacement)");
+      const prevLog = state.debugLog;
+      const prevCount = (state.sessions || []).filter(x=>x.status==="completed").length;
+      if(!Array.isArray(parsed.debugLog)) parsed.debugLog = [];
+      if(!parsed.settings) parsed.settings = { unit:"kg" };
+      if(!parsed.restTimes) parsed.restTimes = {};
+      state = parsed;
+      carryLogThroughReplacement(prevLog, "import (remplacement)", {
+        sessionsBefore: prevCount,
+        sessionsAfter: (state.sessions || []).filter(x=>x.status==="completed").length
+      });
+      currentWorkoutFilter = (state.lastWorkoutId && getWorkout(state.lastWorkoutId))
+        ? state.lastWorkoutId
+        : (state.workouts.length ? state.workouts[0].id : "ALL");
+      editMode = false; routineSheetEditMode = false;
+      clearDraftCache();
+      activeRest = null;
+      clearInterval(restTicker); restTicker = null;
+      ensureWorkoutHues();
+      persist();
+      await refreshSnapshotMeta();
+      switchTab(currentTab);
+    },
+    "Remplacer"
+  );
 });
 
 function loadDemoData(){
@@ -4992,7 +5173,10 @@ function loadDemoData(){
     "Cela remplacera toutes tes données actuelles par le jeu de données de démonstration (routines et historique d'exemple). Pense à exporter tes données avant si tu veux les garder. Cette action est irréversible.",
     async ()=>{
       await saveSafetySnapshot("chargement des données de démo");
+      const prevLogDemo = state.debugLog;
+      const prevCountDemo = (state.sessions || []).filter(x=>x.status==="completed").length;
       state = freshState();
+      carryLogThroughReplacement(prevLogDemo, "données de démo", { sessionsBefore: prevCountDemo });
       currentWorkoutFilter = state.workouts.length ? state.workouts[0].id : "ALL";
       editMode = false;
       routineSheetEditMode = false;
@@ -5026,7 +5210,10 @@ function resetAllData(){
     "Toutes tes séances, routines, exercices et ton historique seront définitivement supprimés. L'application repartira sur une base entièrement vide (sans données de démonstration). Cette action est irréversible.",
     async ()=>{
       await saveSafetySnapshot("réinitialisation des données");
+      const prevLogReset = state.debugLog;
+      const prevCountReset = (state.sessions || []).filter(x=>x.status==="completed").length;
       state = emptyState();
+      carryLogThroughReplacement(prevLogReset, "réinitialisation", { sessionsBefore: prevCountReset });
       currentWorkoutFilter = "ALL";
       editMode = false;
       routineSheetEditMode = false;
