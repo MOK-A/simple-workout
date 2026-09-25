@@ -324,6 +324,83 @@
   }
   .session-duration{font-size:14px; font-weight:800; color:var(--accent); font-variant-numeric:tabular-nums; flex-shrink:0;}
 
+  /* The same banner, but pinned above every screen (Séance, Historique, Réglages…)
+     so the session clock never disappears when you leave the Séance tab. */
+  #global-session-banner{
+    position:absolute; top:0; left:0; right:0; z-index:70;
+    padding:calc(var(--safe-t) + 6px) 12px 7px;
+    background:var(--bg);
+    box-shadow:0 3px 12px rgba(0,0,0,.45);
+  }
+  #global-session-banner.hidden{display:none;}
+  #global-session-banner .gsb-card{
+    background:var(--surface); border-radius:var(--radius-sm); padding:8px 12px;
+  }
+  #global-session-banner .session-banner{
+    margin:0; padding:0; background:none; border-radius:0; font-size:13px;
+  }
+  #global-session-banner .since-last-set{margin-top:5px; padding-top:5px;}
+  /* Screens start below the banner while it is up, so nothing hides behind it. */
+  #app-shell.has-banner .screen{top:var(--gbanner-h, 0px);}
+  #app-shell.has-banner .topbar{padding-top:12px;}
+  #app-shell.has-banner #control-hub.hub-focus{padding-top:44px;}
+
+  /* ---------- Progression / statistiques ---------- */
+  .stats-picker{
+    display:flex; align-items:center; gap:8px; width:100%;
+    background:var(--surface); border-radius:var(--radius-sm); padding:11px 14px;
+    margin-bottom:12px; font-size:16px; font-weight:700; color:var(--text);
+  }
+  .stats-picker .chev{margin-left:auto; color:var(--text-faint); font-size:13px;}
+  .seg-control{
+    display:flex; gap:4px; background:var(--surface); border-radius:10px;
+    padding:3px; margin-bottom:14px;
+  }
+  .seg-control button{
+    flex:1; padding:7px 4px; border-radius:8px; font-size:12.5px; font-weight:700;
+    color:var(--text-faint); background:none; white-space:nowrap;
+  }
+  .seg-control button.on{background:var(--accent); color:#1a0e00;}
+  .chart-card{
+    background:var(--surface); border-radius:var(--radius-sm); padding:12px 8px 6px;
+    margin-bottom:12px;
+  }
+  .chart-card svg{display:block; width:100%; height:auto; touch-action:pan-y;}
+  .chart-legend{
+    display:flex; justify-content:center; flex-wrap:wrap; gap:14px;
+    padding:8px 6px 2px; font-size:11.5px; color:var(--text-faint);
+  }
+  .chart-legend i{
+    display:inline-block; width:16px; height:3px; border-radius:2px;
+    margin-right:5px; vertical-align:middle;
+  }
+  .chart-readout{
+    min-height:34px; margin:2px 0 12px; padding:8px 12px;
+    background:var(--surface-2); border-radius:10px;
+    font-size:12.5px; color:var(--text-dim); text-align:center;
+  }
+  .chart-readout b{color:var(--text); font-weight:700;}
+  .chart-readout.empty{color:var(--text-faint);}
+  .trend-strip{
+    display:flex; gap:8px; margin-bottom:14px;
+  }
+  .trend-strip .t{
+    flex:1; background:var(--surface); border-radius:var(--radius-sm);
+    padding:10px 8px; text-align:center;
+  }
+  .trend-strip .t b{display:block; font-size:17px; font-weight:800; color:var(--text);
+    font-variant-numeric:tabular-nums;}
+  .trend-strip .t b.up{color:var(--green);}
+  .trend-strip .t b.down{color:var(--text-dim);}
+  .trend-strip .t span{display:block; font-size:10.5px; color:var(--text-faint); margin-top:3px;}
+  #choice-modal-options{max-height:58vh; overflow-y:auto;}
+  .chart-dot{cursor:pointer;}
+  .chart-hit{fill:transparent;}
+  .stats-section-title{
+    font-size:12px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase;
+    color:var(--text-faint); margin:18px 0 10px;
+  }
+
   /* ---------- Exercise block ---------- */
   .exercise-block{margin-bottom:26px; transition:opacity .2s;}
   .exercise-block.exercise-done{opacity:0.5;}
@@ -334,6 +411,13 @@
   .exercise-head-right{display:flex; align-items:center; gap:8px; flex-shrink:0;}
   .exercise-name{font-size:17px; font-weight:700; letter-spacing:-0.01em; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
   .exercise-name.active{color:var(--live);}
+  /* Titles are the drag handle for reordering: hold, then move. */
+  .exercise-name{cursor:grab;}
+  .exercise-block.title-dragging{
+    position:relative; z-index:20; opacity:.92;
+    box-shadow:0 10px 26px rgba(0,0,0,.5); border-radius:var(--radius-sm);
+  }
+  .exercise-block.title-dragging .exercise-name{cursor:grabbing;}
   .exercise-mini-chrono{
     font-size:13.5px; font-weight:700; color:var(--live); font-variant-numeric:tabular-nums;
   }
@@ -1002,11 +1086,7 @@
     z-index:45; box-shadow:0 8px 26px rgba(0,0,0,.55); margin:0;
   }
   .hub-rest-data{display:none !important;}
-  .hub-topline{display:flex; align-items:flex-start; gap:8px;}
-  .hub-topline #session-banner-slot{flex:1; min-width:0;}
-  #control-hub .session-banner{
-    margin:0 0 4px; padding:0; background:none; border-radius:0; font-size:12.5px;
-  }
+  .hub-topline{display:flex; align-items:flex-start; gap:8px; justify-content:flex-end;}
   .hub-expand{
     width:30px; height:30px; border-radius:8px; flex-shrink:0;
     display:flex; align-items:center; justify-content:center;
@@ -1248,13 +1328,13 @@
 
 <div id="app-shell">
 
+  <!-- Session status, pinned above every screen -->
+  <div id="global-session-banner" class="hidden"></div>
+
   <!-- ===================== SEANCE ===================== -->
   <div class="screen root active" id="screen-seance">
     <div class="topbar">
       <div class="topbar-left-group">
-        <button class="topbar-icon-btn" id="edit-mode-btn" title="Modifier l'ordre des exercices">
-          <svg id="edit-mode-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l4-1 10-10-3-3L5 16l-1 4z"/><path d="M14 6l3 3"/></svg>
-        </button>
         <button class="routine-selector" id="routine-selector-btn">
           <span id="routine-selector-label">PUSH</span><span class="chev">▾</span>
         </button>
@@ -1263,7 +1343,6 @@
     </div>
     <div id="control-hub" class="hidden">
       <div class="hub-topline">
-        <div id="session-banner-slot"></div>
         <button class="hub-expand" id="hub-expand-btn" aria-label="Mode focus">
           <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
         </button>
@@ -1311,7 +1390,12 @@
 
   <!-- ===================== HISTORIQUE ===================== -->
   <div class="screen" id="screen-historique">
-    <div class="topbar"><h1>Historique</h1></div>
+    <div class="topbar">
+      <h1>Historique</h1>
+      <button class="topbar-icon-btn" id="open-stats-btn" title="Progression">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 17 9 11 13 15 21 6"/><polyline points="16 6 21 6 21 11"/></svg>
+      </button>
+    </div>
     <div class="scroll-area" id="history-scroll"></div>
   </div>
 
@@ -1340,6 +1424,15 @@
       </button>
     </div>
     <div class="scroll-area" id="exercise-history-scroll"></div>
+  </div>
+
+  <!-- ===================== STATISTIQUES ===================== -->
+  <div class="screen" id="screen-stats">
+    <div class="topbar">
+      <button class="back-btn" id="back-from-stats"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>Retour</button>
+      <h1 style="font-size:19px;">Progression</h1>
+    </div>
+    <div class="scroll-area" id="stats-scroll"></div>
   </div>
 
   <!-- ===================== PARAMETRES ===================== -->
@@ -1516,9 +1609,9 @@
    ============================================================ */
 // Bumped on every change. Shown in Réglages so it is easy to confirm, in standalone
 // ("app") mode, that a freshly deployed build actually replaced the cached one.
-const APP_VERSION = "1.33.0";
-const APP_BUILD_DATE = "2026-09-22";
-const APP_BUILD_TIME = "21:43:07";
+const APP_VERSION = "1.35.0";
+const APP_BUILD_DATE = "2026-09-25";
+const APP_BUILD_TIME = "12:59:32";
 
 // Applies the opt-in "stretch to screen" compensation (see Réglages). Re-measured on
 // events that can change the viewport, since the discrepancy is not always present.
@@ -1557,6 +1650,9 @@ document.addEventListener("visibilitychange", ()=>{
   if(!document.hidden){
     setTimeout(forceViewportReflow, 60);
     setTimeout(forceViewportReflow, 350); // once more after iOS settles
+    // Timers are wall-clock based, but iOS throttles or kills the interval while
+    // the app is in the background: revive it and repaint straight away.
+    if(typeof resumeTimersAfterBackground === "function") resumeTimersAfterBackground();
   }
 });
 window.addEventListener("pageshow", ()=> setTimeout(forceViewportReflow, 60));
@@ -1765,27 +1861,44 @@ function buildSeedSessions(exs, workouts){
   const pull = workouts.find(w=>w.name==="PULL");
   const legs = workouts.find(w=>w.name==="LEGS");
   const ex = n => findByName(exs, n).id;
-  const mkSets = (exName, list, rests) => list.map((s,i)=>({ id:uid("s"), exerciseId: ex(exName), weight:s[0], reps:s[1], completed:true, order:i, restAfterSec: rests ? rests[i] : undefined }));
+  const mkSets = (exName, list, rests, bump) => list.map((s,i)=>({
+    id:uid("s"), exerciseId: ex(exName),
+    weight: Math.max(0, s[0] + (s[0] > 0 ? bump : 0)),
+    reps: s[1], completed:true, order:i,
+    restAfterSec: rests ? rests[i] : undefined
+  }));
 
-  const s1sets = [].concat(
-    mkSets("Développé couché", [[80,10],[80,9],[75,10]], [125,130,128]),
-    mkSets("Développé incliné", [[60,10],[60,9]], [110,105]),
-    mkSets("Élévations latérales", [[10,12],[10,12],[10,10]], [58,62,60])
-  );
-  const s2sets = [].concat(
-    mkSets("Tractions", [[0,10],[0,9],[0,8]], [95,100,90]),
-    mkSets("Rowing barre", [[70,10],[70,9]], [85,90])
-  );
-  const s3sets = [].concat(
-    mkSets("Squat", [[100,8],[100,8],[95,9]], [150,145,140]),
-    mkSets("Leg curl", [[45,12],[45,11]], [70,65])
-  );
-
-  return [
-    { id:uid("sess"), workoutId:push.id, workoutName:"PUSH", startDate:daysAgo(4,18,10), endDate:daysAgo(4,18,48), status:"completed", sets:s1sets },
-    { id:uid("sess"), workoutId:pull.id, workoutName:"PULL", startDate:daysAgo(2,19,0), endDate:daysAgo(2,19,42), status:"completed", sets:s2sets },
-    { id:uid("sess"), workoutId:legs.id, workoutName:"LEGS", startDate:daysAgo(1,17,30), endDate:daysAgo(1,18,21), status:"completed", sets:s3sets },
+  // Three full PUSH/PULL/LEGS cycles with a small week-on-week progression, so the
+  // history is long enough for the progression curves to say something.
+  const cycles = [
+    { pushDay:18, pullDay:16, legsDay:15, bump:-5 },
+    { pushDay:11, pullDay: 9, legsDay: 8, bump:-2.5 },
+    { pushDay: 4, pullDay: 2, legsDay: 1, bump:0 }
   ];
+
+  const out = [];
+  cycles.forEach(c=>{
+    out.push({ id:uid("sess"), workoutId:push.id, workoutName:"PUSH",
+      startDate:daysAgo(c.pushDay,18,10), endDate:daysAgo(c.pushDay,18,48), status:"completed",
+      sets: [].concat(
+        mkSets("Développé couché", [[80,10],[80,9],[75,10]], [125,130,128], c.bump),
+        mkSets("Développé incliné", [[60,10],[60,9]], [110,105], c.bump),
+        mkSets("Élévations latérales", [[10,12],[10,12],[10,10]], [58,62,60], c.bump/5)
+      )});
+    out.push({ id:uid("sess"), workoutId:pull.id, workoutName:"PULL",
+      startDate:daysAgo(c.pullDay,19,0), endDate:daysAgo(c.pullDay,19,42), status:"completed",
+      sets: [].concat(
+        mkSets("Tractions", [[0,10],[0,9],[0,8]], [95,100,90], 0),
+        mkSets("Rowing barre", [[70,10],[70,9]], [85,90], c.bump)
+      )});
+    out.push({ id:uid("sess"), workoutId:legs.id, workoutName:"LEGS",
+      startDate:daysAgo(c.legsDay,17,30), endDate:daysAgo(c.legsDay,18,21), status:"completed",
+      sets: [].concat(
+        mkSets("Squat", [[100,8],[100,8],[95,9]], [150,145,140], c.bump*2),
+        mkSets("Leg curl", [[45,12],[45,11]], [70,65], c.bump)
+      )});
+  });
+  return out;
 }
 
 function freshState(){
@@ -1806,6 +1919,7 @@ function freshState(){
     settings: { unit:"kg", sound:true, vibration:true, nowBar:"bottom", playerBar:true, viewMode:"overview", theme:"classique", stretchToScreen:false },
     lastWorkoutId: workouts[0].id,
     currentSessionId: null,
+    activeRest: null,
     debugLog: [],
   };
 }
@@ -1820,6 +1934,7 @@ function emptyState(){
     settings: { unit:"kg", sound:true, vibration:true, nowBar:"bottom", playerBar:true, viewMode:"overview", theme:"classique", stretchToScreen:false },
     lastWorkoutId: null,
     currentSessionId: null,
+    activeRest: null,
     debugLog: [],
   };
 }
@@ -1916,6 +2031,44 @@ function persist(){
     }, 120);
   });
 }
+
+/* An immediate, synchronous write. persist() is debounced by 120 ms, which is
+   fine while the app is on screen but not when iOS is about to freeze or discard
+   the page: that write would never happen. Called on pagehide / visibility loss
+   and whenever the running rest timer changes. */
+function persistNow(){
+  if(!state) return;
+  clearTimeout(persistTimer);
+  try{
+    const json = JSON.stringify(state);
+    if(hasClaudeStorage){
+      // Asynchronous by nature; fire and forget, the debounced write is the backup.
+      window.storage.set(STORAGE_KEY, json, false).catch(()=>{});
+    } else {
+      localStorage.setItem(STORAGE_KEY, json);
+    }
+  }catch(e){
+    storageAvailable = false;
+  }
+}
+
+// Coming back from the background: restart the intervals iOS suspended and
+// repaint every clock from its stored start time.
+function resumeTimersAfterBackground(){
+  try{
+    if(!state) return;
+    if(activeRest && !restTicker) restTicker = setInterval(tickRest, 250);
+    if(typeof ensureLiveChronoTicker === "function") ensureLiveChronoTicker();
+    if(typeof refreshRestOverlay === "function") refreshRestOverlay();
+    if(typeof renderGlobalBanner === "function") renderGlobalBanner();
+    if(currentTab === "seance" && typeof renderSeance === "function") renderSeance();
+  }catch(e){}
+}
+
+// Leaving the app (or locking the phone) must not lose the last few seconds.
+window.addEventListener("pagehide", persistNow);
+window.addEventListener("beforeunload", persistNow);
+document.addEventListener("visibilitychange", ()=>{ if(document.hidden) persistNow(); });
 
 /* ============================================================
    HELPERS: data access
@@ -2286,6 +2439,8 @@ let liveChronoTicker = null;
 function ensureLiveChronoTicker(){
   if(liveChronoTicker) return;
   liveChronoTicker = setInterval(()=>{
+    // Cheap: only rebuilds when the banner's text actually changed.
+    renderGlobalBanner();
     document.querySelectorAll(".live-chrono[data-started-at]").forEach(el=>{
       const startedAt = parseInt(el.dataset.startedAt, 10);
       if(isNaN(startedAt)) return;
@@ -2328,6 +2483,7 @@ function switchTab(tab){
   // switching tabs — otherwise it stays visually stacked above the newly active tab.
   popScreen("screen-session-detail");
   popScreen("screen-exercise-history");
+  popScreen("screen-stats");
   // Leaving the tab must also drop full-screen focus mode. The class has to be
   // cleared here directly: renderControlHub only runs on the Séance tab.
   hubFocusMode = false;
@@ -2337,6 +2493,7 @@ function switchTab(tab){
   document.body.classList.remove("focus-active");
   sessionDetailEditMode = false;
   exerciseHistoryEditMode = false;
+  renderGlobalBanner();
   if(tab==="seance") renderSeance();
   if(tab==="historique") renderHistorique();
   if(tab==="parametres") renderParametres();
@@ -2358,17 +2515,57 @@ function currentWorkoutLabel(){
   return w ? w.name : "SÉANCE";
 }
 
+/* The session banner lives at shell level, above every screen, so the session
+   clock and the "depuis la dernière série" counter stay visible on the
+   Historique and Réglages tabs too. Rebuilt only when its text changes; the
+   numbers themselves are advanced by the live-chrono ticker. */
+let lastBannerSignature = null;
+function renderGlobalBanner(){
+  const el = document.getElementById("global-session-banner");
+  const shell = document.getElementById("app-shell");
+  if(!el || !shell) return;
+  const active = getActiveSession();
+  const sig = active
+    ? active.id + "|" + active.workoutName + "|" + active.startDate + "|" + (active.lastSetDoneAt || 0)
+    : "none";
+  if(sig === lastBannerSignature){
+    // Height can still change (rotation, font scaling): keep the offset honest.
+    if(active) shell.style.setProperty("--gbanner-h", el.offsetHeight + "px");
+    return;
+  }
+  lastBannerSignature = sig;
+
+  if(!active){
+    el.innerHTML = "";
+    el.classList.add("hidden");
+    shell.classList.remove("has-banner");
+    shell.style.removeProperty("--gbanner-h");
+    return;
+  }
+
+  const startedMs = new Date(active.startDate).getTime();
+  // Time since the last completed set, whatever the exercise: survives changing
+  // exercise, so it still tells you how long the machine change is taking.
+  const lastDone = active.lastSetDoneAt;
+  const sinceHtml = lastDone
+    ? '<span class="since-last-set"><span class="sls-label">depuis la dernière série</span>'+
+      '<span class="sls-value live-chrono" data-started-at="'+lastDone+'">'+formatMMSS((Date.now()-lastDone)/1000)+'</span></span>'
+    : '';
+  el.innerHTML = '<div class="gsb-card"><div class="session-banner"><span class="dot"></span>'+
+    '<span class="session-banner-text">Séance <b>'+escapeHtml(active.workoutName)+'</b> en cours depuis <b>'+formatTimeHM(active.startDate)+'</b></span>'+
+    '<span class="session-duration live-chrono" data-format="long" data-started-at="'+startedMs+'">'+formatDurationLong((Date.now()-startedMs)/1000)+'</span></div>'+
+    sinceHtml + '</div>';
+  el.classList.remove("hidden");
+  shell.classList.add("has-banner");
+  shell.style.setProperty("--gbanner-h", el.offsetHeight + "px");
+}
+
 function renderSeance(){
   document.getElementById("routine-selector-label").textContent = currentWorkoutLabel();
 
   const isSpecificRoutine = currentWorkoutFilter !== "ALL";
-  const editBtn = document.getElementById("edit-mode-btn");
-  editBtn.classList.toggle("active", editMode);
-  document.getElementById("edit-mode-icon").innerHTML = editMode
-    ? '<polyline points="20 6 9 17 4 12"/>'
-    : '<path d="M4 20l4-1 10-10-3-3L5 16l-1 4z"/><path d="M14 6l3 3"/>';
 
-  const banner = document.getElementById("session-banner-slot");
+  renderGlobalBanner();
   const active = getActiveSession(); // in_progress only -> gates banner + finish action
   const working = getWorkingSession(); // draft or in_progress -> gates what's shown as "real" sets
 
@@ -2376,20 +2573,6 @@ function renderSeance(){
   sessionBtn.classList.toggle("hidden", !active && !isSpecificRoutine);
   sessionBtn.classList.toggle("finish", !!active);
   sessionBtn.textContent = active ? "Terminer la séance" : "Démarrer la séance";
-
-  if(active){
-    const startedMs = new Date(active.startDate).getTime();
-    // Time since the last completed set, whatever the exercise: survives changing
-    // exercise, so it still tells you how long the machine change is taking.
-    const lastDone = active.lastSetDoneAt;
-    const sinceHtml = lastDone
-      ? '<span class="since-last-set"><span class="sls-label">depuis la dernière série</span>'+
-        '<span class="sls-value live-chrono" data-started-at="'+lastDone+'">'+formatMMSS((Date.now()-lastDone)/1000)+'</span></span>'
-      : '';
-    banner.innerHTML = '<div class="session-banner"><span class="dot"></span><span class="session-banner-text">Séance <b>'+escapeHtml(active.workoutName)+'</b> en cours depuis <b>'+formatTimeHM(active.startDate)+'</b></span><span class="session-duration live-chrono" data-format="long" data-started-at="'+startedMs+'">'+formatDurationLong((Date.now()-startedMs)/1000)+'</span></div>' + sinceHtml;
-  } else {
-    banner.innerHTML = "";
-  }
 
   const list = document.getElementById("exercise-list");
   list.innerHTML = "";
@@ -2492,6 +2675,15 @@ function renderSeance(){
   const bottomActions = document.createElement("div");
   bottomActions.className = "list-bottom-actions";
 
+  // Renaming, duplicating and removing exercises used to live behind the top
+  // pencil. Reordering now happens by dragging a title directly, so the rest of
+  // the management moves down here.
+  const manageBtn = document.createElement("button");
+  manageBtn.className = "bottom-action";
+  manageBtn.textContent = editMode ? "Terminer la gestion des exercices" : "Gérer les exercices";
+  manageBtn.addEventListener("click", toggleExerciseEditMode);
+  bottomActions.appendChild(manageBtn);
+
   if(getActiveSession()){
     const saveAsBtn = document.createElement("button");
     saveAsBtn.className = "bottom-action";
@@ -2523,13 +2715,15 @@ function renderSeance(){
 
   if(editMode && isSpecificRoutine && currentWorkoutObj){
     enableExerciseDragReorder(list, currentWorkoutObj);
+  } else if(isSpecificRoutine && currentWorkoutObj){
+    enableTitleDragReorder(list, currentWorkoutObj);
   }
 }
 
-document.getElementById("edit-mode-btn").addEventListener("click", ()=>{
+function toggleExerciseEditMode(){
   editMode = !editMode;
   renderSeance();
-});
+}
 
 function renderExerciseBlock(ex, session){
   const block = document.createElement("div");
@@ -3037,9 +3231,66 @@ function computeRestTarget(ex, setRef){
 function startRest(ex, setRef){
   const targetSec = computeRestTarget(ex, setRef);
   activeRest = { exerciseId: ex.id, exerciseName: ex.name, setRef: setRef || null, startTs: Date.now(), targetSec };
+  saveActiveRest();
   refreshRestOverlay();
   if(!restTicker) restTicker = setInterval(tickRest, 250);
   logEvent("rest_start", { exercise: ex.name, targetSec });
+}
+
+/* iOS routinely discards a standalone web app's page when you switch to another
+   app: coming back re-runs the whole script, and anything held only in a JS
+   variable is gone. The running rest timer used to live only in `activeRest`, so
+   it vanished. It is now mirrored into the persisted state (wall-clock start, not
+   a countdown), and restored on boot — so the timer keeps running across an app
+   switch, a reload, or a crash. */
+function saveActiveRest(){
+  if(!state) return;
+  state.activeRest = activeRest ? {
+    exerciseId: activeRest.exerciseId,
+    exerciseName: activeRest.exerciseName,
+    setId: activeRest.setRef ? activeRest.setRef.id : null,
+    startTs: activeRest.startTs,
+    targetSec: activeRest.targetSec
+  } : null;
+  persist();
+  persistNow();
+}
+
+function restoreActiveRest(){
+  const saved = state && state.activeRest;
+  if(!saved || typeof saved.startTs !== "number") return;
+  // A rest older than this is stale: the phone was away for hours, not minutes.
+  const MAX_RESTORE_MS = 6 * 60 * 60 * 1000;
+  const working = getWorkingSession();
+  if(!working || (Date.now() - saved.startTs) > MAX_RESTORE_MS){
+    state.activeRest = null;
+    persist();
+    return;
+  }
+  let setRef = null;
+  if(saved.setId){
+    setRef = working.sets.find(s=>s.id === saved.setId) || null;
+    if(!setRef){
+      const draft = getDraftSetsForExercise(saved.exerciseId, working.id) || [];
+      setRef = draft.find(s=>s.id === saved.setId) || null;
+    }
+  }
+  activeRest = {
+    exerciseId: saved.exerciseId,
+    exerciseName: saved.exerciseName,
+    setRef: setRef,
+    startTs: saved.startTs,
+    targetSec: saved.targetSec || 0,
+    // Never replay beeps for seconds that elapsed while the app was closed.
+    _pinged: (saved.targetSec || 0) > 0 ? (Date.now() - saved.startTs) / 1000 >= saved.targetSec : true
+  };
+  if(!restTicker) restTicker = setInterval(tickRest, 250);
+  logEvent("rest_restored", {
+    exercise: saved.exerciseName,
+    targetSec: saved.targetSec,
+    elapsedSec: Math.round((Date.now() - saved.startTs) / 1000)
+  });
+  persist();
 }
 
 function stopRest(){
@@ -3050,8 +3301,8 @@ function stopRest(){
     activeRest.setRef.restAfterSec = elapsedSec;
   }
   logEvent("rest_stop", { exercise: activeRest.exerciseName, targetSec: activeRest.targetSec, actualSec: elapsedSec });
-  persist();
   activeRest = null;
+  saveActiveRest();
   clearInterval(restTicker);
   restTicker = null;
   refreshRestOverlay();
@@ -3922,6 +4173,7 @@ document.getElementById("keypad-confirm").addEventListener("click", ()=>{
       state.restTimes[activeRest.exerciseId] = totalSec;
       s.restAfterSec = totalSec;
       activeRest = null;
+      saveActiveRest();
       clearInterval(restTicker);
       restTicker = null;
       refreshRestOverlay();
@@ -4572,6 +4824,14 @@ function openExerciseHistory(exId, preserveEditMode){
   card.querySelector(".mc-edit").addEventListener("click", ()=> openMachineNoteEditor(ex));
   scroll.appendChild(card);
 
+  // Straight to the curve for this exercise.
+  const curveBtn = document.createElement("button");
+  curveBtn.className = "bottom-action";
+  curveBtn.style.margin = "0 0 16px";
+  curveBtn.textContent = "Voir la progression";
+  curveBtn.addEventListener("click", ()=> openStats(exId));
+  scroll.appendChild(curveBtn);
+
   const sessions = completedSessions().filter(s => s.sets.some(st=>st.exerciseId===exId && st.completed));
   if(sessions.length===0){
     // appendChild, not innerHTML +=, which would rebuild the DOM and drop the
@@ -4618,6 +4878,339 @@ function openExerciseHistory(exId, preserveEditMode){
   pushScreen("screen-exercise-history");
 }
 document.getElementById("back-from-exercise-history").addEventListener("click", ()=> popScreen("screen-exercise-history"));
+
+/* ============================================================
+   PROGRESSION (statistiques)
+   One exercise at a time, plotted session by session. Weight and reps move on
+   different scales, so they get one axis each: weight on the left (thick orange
+   curve, the number you actually chase) and reps on the right (thin blue curve).
+   "Par série" drops the reps curve and draws one weight curve per set index,
+   which is where a plateau on set 3 shows up while set 1 keeps climbing.
+   ============================================================ */
+let statsExerciseId = null;
+let statsMode = "avg"; // "avg" | "top" | "sets"
+let statsRange = 12;   // number of most recent sessions shown
+
+// Ordered so the exercises you can actually plot come first: what matters is the
+// number of distinct sessions, not the number of sets.
+function exercisesWithHistory(){
+  const sessionsCount = {}, setsCount = {};
+  completedSessions().forEach(s=>{
+    const here = {};
+    s.sets.forEach(st=>{
+      if(!st.completed) return;
+      setsCount[st.exerciseId] = (setsCount[st.exerciseId] || 0) + 1;
+      here[st.exerciseId] = true;
+    });
+    Object.keys(here).forEach(id=>{ sessionsCount[id] = (sessionsCount[id] || 0) + 1; });
+  });
+  return state.exercises
+    .filter(e=>setsCount[e.id])
+    .map(e=>({ ex:e, count:sessionsCount[e.id] || 0, sets:setsCount[e.id] }))
+    .sort((a,b)=> (b.count - a.count) || (b.sets - a.sets));
+}
+
+// Chronological (oldest first) list of {session, sets} for one exercise.
+function statsSeriesFor(exId){
+  return completedSessions()
+    .slice()
+    .reverse()
+    .map(s=>({
+      session: s,
+      sets: s.sets.filter(st=>st.exerciseId===exId && st.completed).sort((a,b)=>a.order-b.order)
+    }))
+    .filter(p=>p.sets.length > 0);
+}
+
+function avgOf(arr){ return arr.length ? arr.reduce((a,b)=>a+b,0) / arr.length : 0; }
+
+function bestSetOf(sets){
+  return sets.slice().sort((a,b)=> (b.weight - a.weight) || (b.reps - a.reps))[0];
+}
+
+/* Progression is a matter of a few kilos, so an axis anchored at zero would show a
+   flat line. The axis is zoomed on the data instead: the range is padded, rounded
+   to a readable step, and never collapses when every value is identical. */
+function niceScale(values){
+  const vals = values.filter(v=>typeof v === "number" && isFinite(v));
+  if(vals.length === 0) return { lo:0, hi:1 };
+  let min = Math.min.apply(null, vals), max = Math.max.apply(null, vals);
+  if(max === min){
+    const pad = Math.max(1, Math.abs(max) * 0.1);
+    min -= pad; max += pad;
+  } else {
+    const pad = (max - min) * 0.18;
+    min -= pad; max += pad;
+  }
+  if(min < 0 && Math.min.apply(null, vals) >= 0) min = 0;
+  // Round outwards to a legible step, with exactly 3 intervals on the axis, so the
+  // gridline labels are round numbers (70 / 75 / 80 / 85, not 73,3 / 76,7).
+  const rough = (max - min) / 3;
+  let mag = Math.pow(10, Math.floor(Math.log10(rough)));
+  const steps = [1, 2, 2.5, 5, 10, 20, 25, 50, 100];
+  for(let m = 0; m < 4; m++){
+    for(let i = 0; i < steps.length; i++){
+      const step = steps[i] * mag;
+      const lo = Math.floor(min / step) * step;
+      if(lo + step * 3 >= max) return { lo: lo, hi: lo + step * 3 };
+    }
+    mag *= 10;
+  }
+  return { lo: min, hi: max };
+}
+
+function formatAxisNumber(v){
+  const r = Math.round(v * 10) / 10;
+  return (Math.abs(r - Math.round(r)) < 0.05 ? String(Math.round(r)) : String(r).replace(".", ","));
+}
+
+const SVG_NS = "http://www.w3.org/2000/svg";
+function svgEl(name, attrs){
+  const el = document.createElementNS(SVG_NS, name);
+  Object.keys(attrs || {}).forEach(k=> el.setAttribute(k, attrs[k]));
+  return el;
+}
+
+const STATS_SET_COLORS = ["var(--accent)", "var(--blue)", "var(--green)", "#c084fc", "#f472b6", "#fbbf24"];
+
+/* Builds the chart. `points` is [{label, values:[{y, key}...]}] where every value
+   carries the axis it belongs to. Returns {svg, onSelect} — selecting a point
+   calls back with its index so the readout under the chart can update. */
+function buildProgressChart(cfg){
+  const W = 340, H = 216;
+  const padL = 34, padR = cfg.rightAxis ? 34 : 12, padT = 12, padB = 30;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+  const n = cfg.labels.length;
+
+  const svg = svgEl("svg", { viewBox:"0 0 "+W+" "+H, role:"img" });
+  const xAt = i => n === 1 ? padL + plotW/2 : padL + (plotW * i) / (n - 1);
+
+  const L = niceScale(cfg.leftValues);
+  const R = cfg.rightAxis ? niceScale(cfg.rightValues) : { lo:0, hi:1 };
+  const yLeft = v => padT + plotH - (plotH * (v - L.lo)) / (L.hi - L.lo);
+  const yRight = v => padT + plotH - (plotH * (v - R.lo)) / (R.hi - R.lo);
+
+  // Horizontal grid + axis numbers.
+  for(let g=0; g<=3; g++){
+    const y = padT + (plotH * g) / 3;
+    svg.appendChild(svgEl("line", {
+      x1:padL, y1:y, x2:W-padR, y2:y,
+      stroke:"var(--border)", "stroke-width":g===3 ? 1 : 0.6
+    }));
+    const lv = svgEl("text", { x:padL-5, y:y+3.5, "text-anchor":"end",
+      "font-size":"9", fill:"var(--text-faint)" });
+    lv.textContent = formatAxisNumber(L.lo + (L.hi - L.lo) * (3-g) / 3);
+    svg.appendChild(lv);
+    if(cfg.rightAxis){
+      const rv = svgEl("text", { x:W-padR+5, y:y+3.5, "text-anchor":"start",
+        "font-size":"9", fill:"var(--blue)" });
+      rv.textContent = formatAxisNumber(R.lo + (R.hi - R.lo) * (3-g) / 3);
+      svg.appendChild(rv);
+    }
+  }
+
+  // X labels: at most 5, always including the first and the last.
+  const labelStep = Math.max(1, Math.ceil(n / 5));
+  cfg.labels.forEach((lab, i)=>{
+    if(i !== 0 && i !== n-1 && i % labelStep !== 0) return;
+    if(n > 1 && i !== n-1 && i !== 0 && Math.abs(i - (n-1)) < labelStep/2) return;
+    const t = svgEl("text", { x:xAt(i), y:H-10, "text-anchor":"middle",
+      "font-size":"9", fill:"var(--text-faint)" });
+    t.textContent = lab;
+    svg.appendChild(t);
+  });
+
+  // Curves.
+  cfg.series.forEach(serie=>{
+    const scale = serie.axis === "right" ? yRight : yLeft;
+    const pts = [];
+    serie.values.forEach((v, i)=>{ if(v !== null && v !== undefined) pts.push([xAt(i), scale(v)]); });
+    if(pts.length > 1){
+      svg.appendChild(svgEl("polyline", {
+        points: pts.map(p=>p[0].toFixed(1)+","+p[1].toFixed(1)).join(" "),
+        fill:"none", stroke:serie.color,
+        "stroke-width": serie.axis === "right" ? 1.8 : 2.4,
+        "stroke-linejoin":"round", "stroke-linecap":"round",
+        "stroke-dasharray": serie.dashed ? "4 3" : ""
+      }));
+    }
+    pts.forEach(p=>{
+      svg.appendChild(svgEl("circle", {
+        cx:p[0], cy:p[1], r: serie.axis === "right" ? 2.4 : 3,
+        fill:serie.color, class:"chart-dot"
+      }));
+    });
+  });
+
+  // Invisible full-height bands make every session tappable, not just the dots.
+  const bandW = n > 1 ? plotW / (n - 1) : plotW;
+  for(let i=0;i<n;i++){
+    const hit = svgEl("rect", {
+      x: Math.max(0, xAt(i) - bandW/2), y: padT - 6,
+      width: bandW, height: plotH + 12, class:"chart-hit"
+    });
+    hit.addEventListener("click", ()=>{ if(cfg.onSelect) cfg.onSelect(i); });
+    svg.appendChild(hit);
+  }
+
+  return svg;
+}
+
+function statsDeltaCell(label, from, to, decimals, suffix){
+  const d = to - from;
+  const f = Math.pow(10, decimals || 0);
+  const shown = Math.round(d * f) / f;
+  const cls = shown > 0 ? "up" : (shown < 0 ? "down" : "");
+  const sign = shown > 0 ? "+" : "";
+  return '<div class="t"><b class="'+cls+'">'+sign+String(shown).replace(".", ",")+(suffix||"")+
+    '</b><span>'+label+'</span></div>';
+}
+
+function renderStats(){
+  const scroll = document.getElementById("stats-scroll");
+  scroll.innerHTML = "";
+
+  const available = exercisesWithHistory();
+  if(available.length === 0){
+    scroll.innerHTML = '<div class="empty-state">Pas encore assez d\'historique.<br>Termine une séance pour voir ta progression.</div>';
+    return;
+  }
+  if(!statsExerciseId || !available.some(a=>a.ex.id===statsExerciseId)){
+    statsExerciseId = available[0].ex.id;
+  }
+  const ex = getExercise(statsExerciseId);
+
+  // Exercise picker
+  const picker = document.createElement("button");
+  picker.className = "stats-picker";
+  picker.innerHTML = '<span></span><span class="chev">▾</span>';
+  picker.querySelector("span").textContent = ex.name;
+  picker.addEventListener("click", ()=>{
+    openChoiceModal("Choisir un exercice", null, available.map(a=>({
+      label: a.ex.name + " · " + a.count + " séance" + (a.count>1?"s":""),
+      onPick: ()=>{ statsExerciseId = a.ex.id; renderStats(); }
+    })));
+  });
+  scroll.appendChild(picker);
+
+  // Granularity
+  const seg = document.createElement("div");
+  seg.className = "seg-control";
+  [["avg","Moyenne"],["top","Meilleure série"],["sets","Par série"]].forEach(([key,label])=>{
+    const b = document.createElement("button");
+    b.textContent = label;
+    if(statsMode === key) b.classList.add("on");
+    b.addEventListener("click", ()=>{ statsMode = key; renderStats(); });
+    seg.appendChild(b);
+  });
+  scroll.appendChild(seg);
+
+  const all = statsSeriesFor(statsExerciseId);
+  if(all.length < 2){
+    const one = document.createElement("div");
+    one.className = "empty-state";
+    one.innerHTML = "Une seule séance enregistrée pour cet exercice.<br>La courbe apparaîtra dès la deuxième.";
+    scroll.appendChild(one);
+    return;
+  }
+  const data = all.slice(Math.max(0, all.length - statsRange));
+  const labels = data.map(p=>{
+    const d = new Date(p.session.startDate);
+    return d.getDate() + "/" + String(d.getMonth()+1).padStart(2,"0");
+  });
+
+  const m1Label = metric1HeaderLabel(ex);   // Poids ou Niveau
+  const m2Label = metric2HeaderLabel(ex);   // Reps ou Durée
+
+  const readout = document.createElement("div");
+  readout.className = "chart-readout empty";
+  readout.textContent = "Touche la courbe pour lire une séance.";
+
+  let series, legend, leftVals, rightVals;
+  if(statsMode === "sets"){
+    const maxSets = Math.max(...data.map(p=>p.sets.length));
+    series = [];
+    for(let i=0;i<maxSets;i++){
+      series.push({
+        label: "Série " + (i+1),
+        color: STATS_SET_COLORS[i % STATS_SET_COLORS.length],
+        axis: "left",
+        values: data.map(p=> p.sets[i] ? p.sets[i].weight : null)
+      });
+    }
+    leftVals = series.reduce((a,s)=>a.concat(s.values.filter(v=>v!==null)), []);
+    rightVals = [];
+    legend = series.map(s=>({ label:s.label, color:s.color }));
+  } else {
+    const pick = p => statsMode === "top" ? bestSetOf(p.sets) : null;
+    const w = data.map(p=> statsMode === "top" ? pick(p).weight : avgOf(p.sets.map(s=>s.weight)));
+    const r = data.map(p=> statsMode === "top" ? pick(p).reps : avgOf(p.sets.map(s=>s.reps)));
+    series = [
+      { label:m1Label, color:"var(--accent)", axis:"left", values:w },
+      { label:m2Label, color:"var(--blue)", axis:"right", dashed:true, values:r }
+    ];
+    leftVals = w; rightVals = r;
+    legend = [
+      { label:m1Label + " (gauche)", color:"var(--accent)" },
+      { label:m2Label + " (droite)", color:"var(--blue)" }
+    ];
+  }
+
+  const card = document.createElement("div");
+  card.className = "chart-card";
+  const svg = buildProgressChart({
+    labels: labels,
+    series: series,
+    rightAxis: rightVals.length > 0,
+    leftValues: leftVals,
+    rightValues: rightVals,
+    onSelect: (i)=>{
+      const p = data[i];
+      readout.classList.remove("empty");
+      const parts = p.sets.map(st=> formatMetric1(ex, st.weight) + " × " + formatMetric2(ex, st.reps));
+      readout.innerHTML = '<b>' + formatHistoryDate(p.session.startDate) + '</b> · ' +
+        escapeHtml(p.session.workoutName || "") + '<br>' + escapeHtml(parts.join("  ·  "));
+    }
+  });
+  card.appendChild(svg);
+  const leg = document.createElement("div");
+  leg.className = "chart-legend";
+  leg.innerHTML = legend.map(l=>'<span><i style="background:'+l.color+'"></i>'+escapeHtml(l.label)+'</span>').join("");
+  card.appendChild(leg);
+  scroll.appendChild(card);
+  scroll.appendChild(readout);
+
+  // First -> last progression, on whatever the chart is currently showing.
+  const firstP = data[0], lastP = data[data.length-1];
+  const trend = document.createElement("div");
+  trend.className = "trend-strip";
+  const fw = avgOf(firstP.sets.map(s=>s.weight)), lw = avgOf(lastP.sets.map(s=>s.weight));
+  const fr = avgOf(firstP.sets.map(s=>s.reps)), lr = avgOf(lastP.sets.map(s=>s.reps));
+  const fv = firstP.sets.reduce((a,s)=>a+s.weight*s.reps,0);
+  const lv = lastP.sets.reduce((a,s)=>a+s.weight*s.reps,0);
+  trend.innerHTML =
+    statsDeltaCell(m1Label + " moyen", fw, lw, 1, "") +
+    statsDeltaCell(m2Label + " moyen", fr, lr, 1, "") +
+    statsDeltaCell("volume", fv, lv, 0, "") +
+    '<div class="t"><b>'+data.length+'</b><span>séances</span></div>';
+  scroll.appendChild(trend);
+
+  const note = document.createElement("div");
+  note.className = "history-avg-caption";
+  note.style.textAlign = "center";
+  note.textContent = "Écart entre le " + labels[0] + " et le " + labels[labels.length-1] +
+    (all.length > data.length ? " · " + data.length + " dernières séances sur " + all.length : "");
+  scroll.appendChild(note);
+}
+
+function openStats(exId){
+  if(exId) statsExerciseId = exId;
+  renderStats();
+  pushScreen("screen-stats");
+}
+
+document.getElementById("open-stats-btn").addEventListener("click", ()=> openStats(null));
+document.getElementById("back-from-stats").addEventListener("click", ()=> popScreen("screen-stats"));
 document.getElementById("exercise-history-edit-btn").addEventListener("click", ()=>{
   exerciseHistoryEditMode = !exerciseHistoryEditMode;
   openExerciseHistory(currentHistoryExerciseId, true);
@@ -4748,7 +5341,7 @@ function renderParametres(){
 
   const note = document.createElement("div");
   note.className = "settings-note";
-  note.textContent = "Le minuteur de repos continue de tourner tant que l'application reste ouverte. Chaque série porte un marqueur d'effort : touche-le pour la marquer « trop facile » (↑) ou « échec » (✗).";
+  note.textContent = "Le minuteur de repos continue de tourner même si tu changes d'application ou verrouilles le téléphone : il repart à la bonne seconde au retour. Chaque série porte un marqueur d'effort : touche-le pour la marquer « trop facile » (↑) ou « échec » (✗).";
   scroll.appendChild(note);
 
   const autoNote = document.createElement("div");
@@ -5017,6 +5610,7 @@ async function restoreSafetySnapshot(index){
       editMode = false; routineSheetEditMode = false;
       clearDraftCache();
       activeRest = null;
+      if(state) state.activeRest = null;
       clearInterval(restTicker); restTicker = null;
       persist();
       await refreshSnapshotMeta();
@@ -5357,6 +5951,7 @@ document.getElementById("import-replace").addEventListener("click", ()=>{
       editMode = false; routineSheetEditMode = false;
       clearDraftCache();
       activeRest = null;
+      if(state) state.activeRest = null;
       clearInterval(restTicker); restTicker = null;
       ensureWorkoutHues();
       persist();
@@ -5629,6 +6224,102 @@ function enableExerciseDragReorder(containerEl, workoutObj){
   });
 }
 
+// Reorder exercises straight from the normal Séance list: press and hold an
+// exercise title, then drag. A short tap still opens the exercise's history, and
+// a vertical swipe started on the title still scrolls the list — the drag only
+// takes over once the finger has stayed put for TITLE_DRAG_HOLD_MS.
+const TITLE_DRAG_HOLD_MS = 330;
+function enableTitleDragReorder(containerEl, workoutObj){
+  containerEl.querySelectorAll(".exercise-block .exercise-name").forEach(nameEl=>{
+    nameEl.addEventListener("pointerdown", (e)=>{
+      if(e.button !== undefined && e.button !== 0) return;
+      const block = nameEl.closest(".exercise-block");
+      if(!block) return;
+
+      const startX = e.clientX, startY0 = e.clientY;
+      let holdTimer = null, active = false, startY = startY0, items = [];
+      let pendingY = null, rafScheduled = false;
+
+      function cleanup(){
+        if(holdTimer){ clearTimeout(holdTimer); holdTimer = null; }
+        document.removeEventListener("pointermove", onMove, true);
+        document.removeEventListener("pointerup", onUp, true);
+        document.removeEventListener("pointercancel", onUp, true);
+      }
+
+      function begin(){
+        holdTimer = null;
+        active = true;
+        items = Array.from(containerEl.querySelectorAll(".exercise-block"));
+        startY = (pendingY === null) ? startY0 : pendingY;
+        block.classList.add("title-dragging");
+        block.style.willChange = "transform";
+        tryVibrate(25);
+        try{ nameEl.setPointerCapture(e.pointerId); }catch(err){}
+      }
+
+      function processMove(clientY){
+        block.style.transform = "translateY("+(clientY - startY)+"px)";
+        for(let i=0;i<items.length;i++){
+          if(items[i]===block) continue;
+          const rect = items[i].getBoundingClientRect();
+          if(clientY > rect.top && clientY < rect.bottom){
+            const curIdx = items.indexOf(block);
+            if(i !== curIdx){
+              containerEl.insertBefore(block, i < curIdx ? items[i] : items[i].nextSibling);
+              items = Array.from(containerEl.querySelectorAll(".exercise-block"));
+              startY = clientY;
+              block.style.transform = "translateY(0)";
+            }
+            break;
+          }
+        }
+      }
+
+      function onMove(ev){
+        if(!active){
+          // Moved before the hold completed: this is a scroll, not a drag.
+          if(Math.abs(ev.clientY - startY0) > 8 || Math.abs(ev.clientX - startX) > 8) cleanup();
+          return;
+        }
+        if(ev.cancelable) ev.preventDefault();
+        pendingY = ev.clientY;
+        if(!rafScheduled){
+          rafScheduled = true;
+          requestAnimationFrame(()=>{
+            rafScheduled = false;
+            if(pendingY !== null) processMove(pendingY);
+          });
+        }
+      }
+
+      function onUp(){
+        const wasActive = active;
+        cleanup();
+        if(!wasActive) return;
+        block.classList.remove("title-dragging");
+        block.style.transform = ""; block.style.willChange = "";
+        // The tap that ended the drag must not open the exercise history.
+        const swallow = (ev)=>{ ev.stopPropagation(); ev.preventDefault(); };
+        nameEl.addEventListener("click", swallow, true);
+        setTimeout(()=>nameEl.removeEventListener("click", swallow, true), 400);
+        const shownIds = Array.from(containerEl.querySelectorAll(".exercise-block"))
+          .map(el=>el.dataset.exerciseId).filter(Boolean);
+        // Anything not shown keeps its place at the end rather than being dropped.
+        const rest = workoutObj.exerciseIds.filter(id=>shownIds.indexOf(id) === -1);
+        workoutObj.exerciseIds = shownIds.concat(rest);
+        persist();
+        renderSeance();
+      }
+
+      holdTimer = setTimeout(begin, TITLE_DRAG_HOLD_MS);
+      document.addEventListener("pointermove", onMove, true);
+      document.addEventListener("pointerup", onUp, true);
+      document.addEventListener("pointercancel", onUp, true);
+    });
+  });
+}
+
 /* ============================================================
    GENERIC CONFIRM / TEXT MODALS
    ============================================================ */
@@ -5696,6 +6387,7 @@ async function init(){
     currentWorkoutFilter = "ALL";
   }
 
+  restoreActiveRest();
   renderSeance();
   ensureLiveChronoTicker();
   dismissSplash();
