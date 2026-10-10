@@ -407,7 +407,14 @@
   .exercise-head{
     display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:2px;
   }
-  .exercise-head-left{display:flex; align-items:center; gap:8px; min-width:0;}
+  .exercise-head-left{display:flex; align-items:center; gap:8px; min-width:0; flex:1; cursor:pointer;}
+  .exercise-hist-btn{
+    width:28px; height:28px; border-radius:8px; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    background:var(--surface-3); color:var(--accent);
+  }
+  .exercise-hist-btn svg{width:16px; height:16px;}
+  .exercise-hist-btn:active{background:var(--accent-dim);}
   .exercise-head-right{display:flex; align-items:center; gap:8px; flex-shrink:0;}
   .exercise-name{font-size:17px; font-weight:700; letter-spacing:-0.01em; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
   .exercise-name.active{color:var(--live);}
@@ -498,9 +505,19 @@
     font-size:12.5px; color:var(--text-faint); text-align:center; font-variant-numeric:tabular-nums;
     white-space:nowrap; overflow:hidden;
   }
-  .set-restafter.planned{color:var(--text-dim); font-style:italic;}
-  .set-restafter.live{color:var(--blue); font-weight:700; font-style:normal;}
-  .set-restafter.live.overtime-live{color:var(--accent);}
+  /* Repos column: last session's rest above (small, grey), this session's below
+     (bigger, bold) — the one you actually act on. */
+  .set-restafter .rest-ref{
+    display:block; font-size:10px; color:var(--text-faint); opacity:.8; line-height:1.2;
+  }
+  .set-restafter .rest-now{
+    display:block; font-size:13.5px; font-weight:700; color:var(--text-dim);
+    line-height:1.25; font-variant-numeric:tabular-nums;
+  }
+  .set-restafter .rest-now.planned{color:var(--text-faint); font-weight:600; font-style:italic;}
+  .set-restafter .rest-now.live{color:var(--blue); font-style:normal;}
+  .set-restafter .rest-now.live.overtime-live{color:var(--accent);}
+  .set-restafter .rest-now.set-live-chrono{color:var(--live); margin-top:0;}
   .set-live-chrono{
     display:block; font-size:11px; font-weight:700; color:var(--live);
     font-variant-numeric:tabular-nums; margin-top:2px;
@@ -854,10 +871,21 @@
     border-bottom:1px solid var(--border);
   }
   .detail-set-line b{color:var(--text); font-weight:600;}
+  .detail-set-line .dsl-right{display:flex; align-items:baseline; gap:12px;}
+  .detail-set-line .dsl-rest{
+    font-size:12px; color:var(--text-faint); font-variant-numeric:tabular-nums;
+  }
   .detail-set-line .fail{color:var(--red);}
+  .effort-badge{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:17px; height:17px; border-radius:5px; font-size:11px; font-weight:700;
+    margin-left:6px; vertical-align:middle;
+  }
+  .effort-badge.easy{background:rgba(50,215,75,.18); color:var(--green);}
+  .effort-badge.fail{background:rgba(255,69,58,.18); color:var(--red);}
   .hist-edit-wrap{background:var(--surface); border-radius:var(--radius); overflow:hidden; margin-bottom:6px;}
   .hist-edit-row{
-    position:relative; display:grid; grid-template-columns:1fr 1fr;
+    position:relative; display:grid; grid-template-columns:18px 1fr 1fr 46px;
     align-items:center; gap:6px; padding:10px 12px;
     background:var(--surface); border-bottom:1px solid var(--border);
     touch-action:pan-y;
@@ -890,6 +918,10 @@
   .settings-version .sv-name{font-size:13px; font-weight:600;}
   .settings-version .sv-num{font-size:19px; font-weight:800; color:var(--text-dim); font-variant-numeric:tabular-nums;}
   .settings-version .sv-date{font-size:11.5px;}
+  .settings-version.top{
+    margin:0 0 18px; padding:12px; background:var(--surface);
+    border-radius:var(--radius);
+  }
   .settings-diag{
     background:var(--surface); border-radius:var(--radius);
     padding:12px 14px; margin:0 0 16px;
@@ -1236,6 +1268,8 @@
   #control-hub.hub-focus .stepper .nudge button{width:28px; height:24px; font-size:10px;}
   #control-hub.hub-focus .set-prev, #control-hub.hub-focus .set-restafter{font-size:16px;}
   #control-hub.hub-focus .set-prev-rest{font-size:13px;}
+  #control-hub.hub-focus .set-restafter .rest-ref{font-size:13px;}
+  #control-hub.hub-focus .set-restafter .rest-now{font-size:17px;}
   #control-hub.hub-focus .set-live-chrono{font-size:14px;}
   #control-hub.hub-focus .set-check{width:46px; height:46px; font-size:22px;}
   #control-hub.hub-focus .set-check svg{width:18px; height:18px;}
@@ -1252,6 +1286,8 @@
     min-width:0; font-size:13.5px; line-height:1.25; white-space:normal;
   }
   #control-hub.hub-focus .set-prev-rest{font-size:12px;}
+  #control-hub.hub-focus .set-restafter .rest-ref{font-size:11.5px;}
+  #control-hub.hub-focus .set-restafter .rest-now{font-size:15px;}
   #control-hub.hub-focus .set-live-chrono{font-size:13px;}
   #control-hub.hub-focus .sets-header-row span{font-size:11px; letter-spacing:0;}
   #control-hub.hub-focus .add-set-row{padding:20px; font-size:22px;}
@@ -1391,10 +1427,12 @@
   <!-- ===================== HISTORIQUE ===================== -->
   <div class="screen" id="screen-historique">
     <div class="topbar">
-      <h1>Historique</h1>
-      <button class="topbar-icon-btn" id="open-stats-btn" title="Progression">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 17 9 11 13 15 21 6"/><polyline points="16 6 21 6 21 11"/></svg>
-      </button>
+      <div class="topbar-left-group">
+        <button class="exercise-hist-btn" id="open-stats-btn" title="Progression" aria-label="Progression">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 17 9 11 13 15 21 6"/><polyline points="16 6 21 6 21 11"/></svg>
+        </button>
+        <h1>Historique</h1>
+      </div>
     </div>
     <div class="scroll-area" id="history-scroll"></div>
   </div>
@@ -1609,9 +1647,9 @@
    ============================================================ */
 // Bumped on every change. Shown in Réglages so it is easy to confirm, in standalone
 // ("app") mode, that a freshly deployed build actually replaced the cached one.
-const APP_VERSION = "1.35.0";
-const APP_BUILD_DATE = "2026-09-25";
-const APP_BUILD_TIME = "12:59:32";
+const APP_VERSION = "1.38.0";
+const APP_BUILD_DATE = "2026-10-08";
+const APP_BUILD_TIME = "14:34:15";
 
 // Applies the opt-in "stretch to screen" compensation (see Réglages). Re-measured on
 // events that can change the viewport, since the discrepancy is not always present.
@@ -1865,7 +1903,8 @@ function buildSeedSessions(exs, workouts){
     id:uid("s"), exerciseId: ex(exName),
     weight: Math.max(0, s[0] + (s[0] > 0 ? bump : 0)),
     reps: s[1], completed:true, order:i,
-    restAfterSec: rests ? rests[i] : undefined
+    restAfterSec: rests ? rests[i] : undefined,
+    execDurationSec: 28 + (i * 4) + (s[1] > 10 ? 8 : 0)
   }));
 
   // Three full PUSH/PULL/LEGS cycles with a small week-on-week progression, so the
@@ -2754,12 +2793,30 @@ function renderExerciseBlock(ex, session){
   const headLeft = document.createElement("div");
   headLeft.className = "exercise-head-left";
 
+  // The curve icon is the only way into the exercise's history from here, so the
+  // title itself is free to do the more frequent thing: open the exercise big.
+  const histBtn = document.createElement("button");
+  histBtn.className = "exercise-hist-btn";
+  histBtn.title = "Historique et progression";
+  histBtn.setAttribute("aria-label", "Historique de " + ex.name);
+  histBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 17 9 11 13 15 21 6"/><polyline points="16 6 21 6 21 11"/></svg>';
+  histBtn.addEventListener("click", (e)=>{
+    e.stopPropagation();
+    openExerciseHistory(ex.id);
+  });
+  headLeft.appendChild(histBtn);
+
   const nameEl = document.createElement("span");
   nameEl.className = "exercise-name" + (exState.status === "active" ? " active" : "");
   nameEl.textContent = ex.name;
   nameEl.style.cursor = "pointer";
-  nameEl.addEventListener("click", ()=> openExerciseHistory(ex.id));
   headLeft.appendChild(nameEl);
+  // Tapping the title — or the empty space to its right — opens the exercise
+  // full screen. The curve icon stops the event, so it keeps its own job.
+  headLeft.addEventListener("click", (e)=>{
+    if(e.target.closest(".exercise-hist-btn")) return;
+    openExerciseInFocus(ex.id);
+  });
 
   if(getViewMode() === "focus" && !editMode){
     const doneCount = displaySets.filter(st=>st.completed).length;
@@ -2824,7 +2881,7 @@ function renderExerciseBlock(ex, session){
     wrap.appendChild(hdr);
 
     displaySets.forEach((s, idx)=>{
-      wrap.appendChild(renderSetRow(ex, s, idx, usingDraft, session, lastPerf));
+      wrap.appendChild(renderSetRow(ex, s, idx, usingDraft, session, lastPerf, displaySets));
     });
 
     const addSetRow = document.createElement("div");
@@ -2839,7 +2896,17 @@ function renderExerciseBlock(ex, session){
   return block;
 }
 
-function renderSetRow(ex, s, idx, isDraft, session, lastPerf){
+/* The rest shown on a row is the one that PRECEDES that set, so the value comes
+   from the previous set of the same exercise (where it is stored as restAfterSec
+   once taken, or restPlannedSec while only planned). The first set of an exercise
+   has no rest before it inside the exercise — that gap is the inter-exercise
+   rest, shown in the player, not here. */
+function restOwnerSet(siblingSets, idx){
+  if(!Array.isArray(siblingSets) || idx <= 0) return null;
+  return siblingSets[idx-1] || null;
+}
+
+function renderSetRow(ex, s, idx, isDraft, session, lastPerf, siblingSets){
   const outer = document.createElement("div");
   outer.className = "set-row-outer";
 
@@ -2862,53 +2929,74 @@ function renderSetRow(ex, s, idx, isDraft, session, lastPerf){
   row.appendChild(weightCell);
   row.appendChild(repsCell);
 
+  // "Avant" = what you did last time: the load on top, the time the set itself
+  // took underneath. (It used to show the rest time, which belongs in "Repos".)
   const prevSet = lastPerf ? lastPerf[idx] : null;
   const prevEl = document.createElement("div");
   prevEl.className = "set-prev";
   if(prevSet){
-    const prevRestStr = typeof prevSet.restAfterSec === "number" ? formatMMSS(prevSet.restAfterSec) : null;
-    prevEl.innerHTML = escapeHtml(formatMetric1(ex, prevSet.weight)+"×"+formatMetric2(ex, prevSet.reps)) + (prevRestStr ? '<span class="set-prev-rest">'+prevRestStr+'</span>' : '');
+    const execStr = typeof prevSet.execDurationSec === "number" && prevSet.execDurationSec > 0
+      ? formatMMSS(prevSet.execDurationSec) : null;
+    prevEl.innerHTML = escapeHtml(formatMetric1(ex, prevSet.weight)+"×"+formatMetric2(ex, prevSet.reps)) +
+      (execStr ? '<span class="set-prev-rest">'+execStr+'</span>' : '');
   } else {
     prevEl.textContent = "—";
   }
   row.appendChild(prevEl);
 
+  /* "Repos" = the rest that PRECEDES this set, not the one that follows it.
+     Two lines: last session's value for reference (small, grey) and this
+     session's value underneath (bigger, bold). The number itself is still stored
+     on the previous set — only the row it is shown on changes. */
+  const ownerSet = restOwnerSet(siblingSets, idx);
+
   const restEl = document.createElement("div");
   restEl.className = "set-restafter";
   const setRunning = !isDraft && s.startedAt && !s.completed;
 
-  if(setRunning){
-    // Set in progress: this slot shows the live duration of the set itself.
-    restEl.dataset.setId = s.id;
-    const chip = document.createElement("span");
-    chip.className = "set-live-chrono live-chrono";
-    chip.dataset.startedAt = String(s.startedAt);
-    chip.textContent = formatMMSS((Date.now() - s.startedAt)/1000);
-    restEl.appendChild(chip);
-  } else if(!isDraft){
-    restEl.dataset.setId = s.id;
-    if(typeof s.restAfterSec === "number"){
-      restEl.textContent = formatMMSS(s.restAfterSec);
-    } else if(typeof s.restPlannedSec === "number"){
-      restEl.textContent = formatMMSS(s.restPlannedSec);
-      restEl.classList.add("planned");
-    } else {
-      restEl.textContent = "—";
-    }
-  } else {
-    if(typeof s.restPlannedSec === "number"){
-      restEl.textContent = formatMMSS(s.restPlannedSec);
-      restEl.classList.add("planned");
-    } else {
-      restEl.textContent = "—";
-    }
+  // Reference line: the rest taken before the same set index last time.
+  const prevOwner = lastPerf && idx > 0 ? lastPerf[idx-1] : null;
+  if(prevOwner && typeof prevOwner.restAfterSec === "number"){
+    const ref = document.createElement("span");
+    ref.className = "rest-ref";
+    ref.textContent = formatMMSS(prevOwner.restAfterSec);
+    restEl.appendChild(ref);
   }
 
-  if(!setRunning){
+  const nowEl = document.createElement("span");
+  nowEl.className = "rest-now";
+  if(setRunning){
+    // Set in progress: show its live duration rather than a rest that is over.
+    nowEl.classList.add("set-live-chrono", "live-chrono");
+    nowEl.dataset.startedAt = String(s.startedAt);
+    nowEl.textContent = formatMMSS((Date.now() - s.startedAt)/1000);
+  } else if(ownerSet){
+    // The rest counting right now belongs to the row that follows the set it
+    // started from — which is this one.
+    if(activeRest && activeRest.setRef === ownerSet){
+      restEl.dataset.restOwnerId = ownerSet.id;
+      nowEl.classList.add("live");
+      nowEl.textContent = formatMMSS((Date.now() - activeRest.startTs)/1000);
+    } else if(typeof ownerSet.restAfterSec === "number"){
+      nowEl.textContent = formatMMSS(ownerSet.restAfterSec);
+    } else if(typeof ownerSet.restPlannedSec === "number"){
+      nowEl.textContent = formatMMSS(ownerSet.restPlannedSec);
+      nowEl.classList.add("planned");
+    } else {
+      nowEl.textContent = "—";
+    }
+  } else {
+    // First set of the exercise: nothing precedes it inside this exercise.
+    nowEl.textContent = "—";
+    nowEl.classList.add("planned");
+  }
+  restEl.appendChild(nowEl);
+
+  if(!setRunning && ownerSet){
     restEl.style.cursor = "pointer";
     restEl.addEventListener("click", (e)=>{
       e.stopPropagation();
-      openRestKeypad(ex, s, isDraft, idx);
+      openRestKeypad(ex, ownerSet, isDraft, idx-1);
     });
   }
   row.appendChild(restEl);
@@ -3444,7 +3532,7 @@ function renderHubSets(ctx){
     '</span><span>Avant</span><span>Repos</span><span></span>' + (true ? '<span></span>' : '');
   inner.appendChild(hdr);
 
-  sets.forEach((st, i)=> inner.appendChild(renderSetRow(ex, st, i, false, session, lastPerf)));
+  sets.forEach((st, i)=> inner.appendChild(renderSetRow(ex, st, i, false, session, lastPerf, sets)));
 
   const addRow = document.createElement("div");
   addRow.className = "add-set-row";
@@ -3938,12 +4026,14 @@ function refreshRestOverlay(){
   progress.setAttribute("stroke", overtime ? "#ff9f0a" : "#0a84ff");
 
   if(activeRest.setRef){
-    const liveCell = document.querySelector('.set-restafter[data-set-id="'+activeRest.setRef.id+'"]');
-    if(liveCell){
-      liveCell.textContent = formatMMSS(elapsed);
-      liveCell.classList.remove("planned");
-      liveCell.classList.add("live");
-      liveCell.classList.toggle("overtime-live", overtime);
+    // The running rest is displayed on the row of the set it leads INTO, which
+    // carries the owning set's id in data-rest-owner-id.
+    const cell = document.querySelector('.set-restafter[data-rest-owner-id="'+activeRest.setRef.id+'"] .rest-now');
+    if(cell){
+      cell.textContent = formatMMSS(elapsed);
+      cell.classList.remove("planned");
+      cell.classList.add("live");
+      cell.classList.toggle("overtime-live", overtime);
     }
   }
 
@@ -4621,18 +4711,15 @@ function openSessionDetail(sessionId, preserveEditMode){
       wrap.className = "hist-edit-wrap";
       const hdr = document.createElement("div");
       hdr.className = "sets-header-row";
-      hdr.style.gridTemplateColumns = "1fr 1fr";
-      hdr.innerHTML = '<span>'+metric1HeaderLabel(ex)+'</span><span>'+metric2HeaderLabel(ex)+'</span>';
+      hdr.style.gridTemplateColumns = "18px 1fr 1fr 46px";
+      hdr.innerHTML = '<span></span><span>'+metric1HeaderLabel(ex)+'</span><span>'+metric2HeaderLabel(ex)+'</span><span>Effort</span>';
       wrap.appendChild(hdr);
-      sets.forEach(s=> wrap.appendChild(renderHistoricalSetRow(ex, s, session)));
+      sets.forEach((s,i)=> wrap.appendChild(renderHistoricalSetRow(ex, s, session, null, i+1)));
       const addBtn = document.createElement("div");
       addBtn.className = "hist-add-set-row";
       addBtn.textContent = "+ Ajouter une série";
       addBtn.addEventListener("click", ()=>{
-        const last = sets[sets.length-1];
-        const newOrder = session.sets.filter(st=>st.exerciseId===exId).length;
-        session.sets.push({ id: uid("s"), exerciseId: exId, weight: last?last.weight:20, reps: last?last.reps:10, completed:true, order:newOrder });
-        persist();
+        addSetToPastSession(session, exId);
         openSessionDetail(sessionId, true);
       });
       wrap.appendChild(addBtn);
@@ -4671,8 +4758,11 @@ function openSessionDetail(sessionId, preserveEditMode){
       sets.forEach((st,i)=>{
         const effort = st.effort === "easy" ? '<span class="sd-effort easy">↑</span>'
                      : st.effort === "fail" ? '<span class="sd-effort fail">✗</span>' : '';
-        const rest = typeof st.restAfterSec === "number"
-          ? '<span class="sd-rest">' + formatMMSS(st.restAfterSec) + '</span>' : '<span class="sd-rest"></span>';
+        // Rest shown is the one taken BEFORE this set (stored on the previous one).
+        const beforeOwner = i > 0 ? sets[i-1] : null;
+        const rest = beforeOwner && typeof beforeOwner.restAfterSec === "number"
+          ? '<span class="sd-rest" title="Repos avant cette série">' + formatMMSS(beforeOwner.restAfterSec) + '</span>'
+          : '<span class="sd-rest"></span>';
         const line = document.createElement("div");
         line.className = "sd-set" + (std && i === topIdx && sets.length > 1 ? " top" : "");
         line.innerHTML =
@@ -4716,7 +4806,29 @@ document.getElementById("session-detail-delete-btn").addEventListener("click", (
   );
 });
 
-function renderHistoricalSetRow(ex, s, session, onRefresh){
+// Adds a set to an already-recorded session, copying the last one as a starting
+// point. Used by both history edit modes.
+function addSetToPastSession(session, exId){
+  const existing = session.sets.filter(st=>st.exerciseId===exId).sort((a,b)=>a.order-b.order);
+  const last = existing[existing.length-1];
+  session.sets.push({
+    id: uid("s"), exerciseId: exId,
+    weight: last ? last.weight : 20,
+    reps: last ? last.reps : 10,
+    completed: true, order: existing.length
+  });
+  logEvent("set_added_after", { exercise: (getExercise(exId)||{}).name, session: session.id });
+  persist();
+}
+
+// Small inline marker so "trop facile" / "échec" stay readable outside edit mode.
+function effortBadge(st){
+  if(st.effort === "easy") return ' <span class="effort-badge easy">↑</span>';
+  if(st.effort === "fail") return ' <span class="effort-badge fail">✗</span>';
+  return '';
+}
+
+function renderHistoricalSetRow(ex, s, session, onRefresh, setNumber){
   const refresh = onRefresh || (()=> openSessionDetail(session.id, true));
   const outer = document.createElement("div");
   outer.className = "set-row-outer";
@@ -4729,10 +4841,29 @@ function renderHistoricalSetRow(ex, s, session, onRefresh){
   const row = document.createElement("div");
   row.className = "hist-edit-row";
 
+  const idxEl = document.createElement("div");
+  idxEl.className = "set-index";
+  idxEl.textContent = String(setNumber || "");
+  row.appendChild(idxEl);
+
   const weightCell = buildStepperCell(ex, s.weight, "weight");
   const repsCell = buildStepperCell(ex, s.reps, "reps");
   row.appendChild(weightCell);
   row.appendChild(repsCell);
+
+  // Effort marker, editable after the fact: none -> trop facile -> échec -> none.
+  const effortBtn = document.createElement("button");
+  const effort = s.effort || null;
+  effortBtn.className = "set-effort " + (effort || "none");
+  effortBtn.innerHTML = effort === "easy" ? "↑" : (effort === "fail" ? "✗" : "·");
+  effortBtn.title = effort === "easy" ? "Trop facile" : (effort === "fail" ? "Échec" : "Marquer l'effort");
+  effortBtn.addEventListener("click", (e)=>{
+    e.stopPropagation();
+    s.effort = !s.effort ? "easy" : (s.effort === "easy" ? "fail" : null);
+    persist();
+    refresh();
+  });
+  row.appendChild(effortBtn);
   outer.appendChild(row);
 
   attachStepperEvents(weightCell, s, "weight", ex, false, null);
@@ -4859,16 +4990,32 @@ function openExerciseHistory(exId, preserveEditMode){
       wrap.className = "hist-edit-wrap";
       const hdr = document.createElement("div");
       hdr.className = "sets-header-row";
-      hdr.style.gridTemplateColumns = "1fr 1fr";
-      hdr.innerHTML = '<span>'+metric1HeaderLabel(ex)+'</span><span>'+metric2HeaderLabel(ex)+'</span>';
+      hdr.style.gridTemplateColumns = "18px 1fr 1fr 46px";
+      hdr.innerHTML = '<span></span><span>'+metric1HeaderLabel(ex)+'</span><span>'+metric2HeaderLabel(ex)+'</span><span>Effort</span>';
       wrap.appendChild(hdr);
-      sets.forEach(st=> wrap.appendChild(renderHistoricalSetRow(ex, st, s, ()=>openExerciseHistory(exId, true))));
+      sets.forEach((st,i)=> wrap.appendChild(renderHistoricalSetRow(ex, st, s, ()=>openExerciseHistory(exId, true), i+1)));
+      const addBtn = document.createElement("div");
+      addBtn.className = "hist-add-set-row";
+      addBtn.textContent = "+ Ajouter une série";
+      addBtn.addEventListener("click", ()=>{
+        addSetToPastSession(s, exId);
+        openExerciseHistory(exId, true);
+      });
+      wrap.appendChild(addBtn);
       block.appendChild(wrap);
     } else {
       sets.forEach((st,i)=>{
         const line = document.createElement("div");
         line.className = "detail-set-line";
-        line.innerHTML = '<span>Série '+(i+1)+'</span><b>'+formatMetric1(ex, st.weight)+' × '+formatMetric2(ex, st.reps)+'</b>';
+        // Rest shown is the one taken BEFORE this set (stored on the previous one).
+        const beforeOwner = i > 0 ? sets[i-1] : null;
+        const restStr = beforeOwner && typeof beforeOwner.restAfterSec === "number"
+          ? formatMMSS(beforeOwner.restAfterSec) : null;
+        line.innerHTML = '<span>Série '+(i+1)+effortBadge(st)+'</span>' +
+          '<span class="dsl-right">' +
+            (restStr ? '<span class="dsl-rest" title="Repos avant cette série">⏱ '+restStr+'</span>' : '') +
+            '<b>'+formatMetric1(ex, st.weight)+' × '+formatMetric2(ex, st.reps)+'</b>' +
+          '</span>';
         block.appendChild(line);
       });
     }
@@ -5231,6 +5378,14 @@ function renderParametres(){
   const scroll = document.getElementById("parametres-scroll");
   scroll.innerHTML = "";
 
+  // Version first: this is what you check to confirm a new build really loaded.
+  const versionRow = document.createElement("div");
+  versionRow.className = "settings-version top";
+  versionRow.innerHTML = '<span class="sv-name">Simple Workout</span>' +
+    '<span class="sv-num">v' + APP_VERSION + '</span>' +
+    '<span class="sv-date">build ' + APP_BUILD_DATE + ' · ' + APP_BUILD_TIME + '</span>';
+  scroll.appendChild(versionRow);
+
   const group = document.createElement("div");
   group.className = "settings-group";
 
@@ -5408,14 +5563,6 @@ function renderParametres(){
   dataNote.className = "settings-note";
   dataNote.textContent = "La copie de sécurité est un fichier JSON avec toutes tes séances, exercices et ton historique — à garder de côté (mail, cloud...) ou à me partager pour analyse. \"Restaurer\" remplace toutes les données actuelles par le contenu d'un fichier choisi. Le journal de debug garde une trace des actions clés (et de toute erreur rencontrée) pour aider à comprendre un souci après coup. La réinitialisation efface tout et repart sur une base vide. Avant chaque import, chargement de démo ou réinitialisation, une copie de tes données est gardée automatiquement : « Revenir en arrière » la restaure.";
   scroll.appendChild(dataNote);
-
-  // Version block: lets you confirm at a glance that a new build really loaded.
-  const versionRow = document.createElement("div");
-  versionRow.className = "settings-version";
-  versionRow.innerHTML = '<span class="sv-name">Simple Workout</span>' +
-    '<span class="sv-num">v' + APP_VERSION + '</span>' +
-    '<span class="sv-date">build ' + APP_BUILD_DATE + ' · ' + APP_BUILD_TIME + '</span>';
-  scroll.appendChild(versionRow);
 
   // Viewport diagnostics: the black band under the tab bar could not be reproduced
   // outside a real device, so these are the actual measured values to compare.
