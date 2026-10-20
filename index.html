@@ -1647,9 +1647,9 @@
    ============================================================ */
 // Bumped on every change. Shown in Réglages so it is easy to confirm, in standalone
 // ("app") mode, that a freshly deployed build actually replaced the cached one.
-const APP_VERSION = "1.38.0";
-const APP_BUILD_DATE = "2026-10-08";
-const APP_BUILD_TIME = "14:34:15";
+const APP_VERSION = "1.40.0";
+const APP_BUILD_DATE = "2026-10-19";
+const APP_BUILD_TIME = "18:25:37";
 
 // Applies the opt-in "stretch to screen" compensation (see Réglages). Re-measured on
 // events that can change the viewport, since the discrepancy is not always present.
@@ -2426,16 +2426,24 @@ function cycleExerciseState(exerciseId, workoutIdForNaming){
   if(cur.status === "notStarted"){
     next = { status: "active", startedAt: Date.now(), doneAt: null };
     beginSessionIfNeeded(session);
+    // Moving to another machine: a rest still attached to the previous exercise
+    // is now just the gap between the two.
+    if(activeRest && activeRest.exerciseId !== exerciseId) makeRestNeutral("moved_to_other_exercise");
     logEvent("exercise_start", { exercise: exName });
   } else if(cur.status === "active"){
     const durationSec = Math.round((Date.now() - cur.startedAt) / 1000);
     next = { status: "done", startedAt: cur.startedAt, doneAt: Date.now(), durationSec };
     logEvent("exercise_done", { exercise: exName, durationSec });
+    // Its rest is no longer this exercise's business.
+    if(activeRest && activeRest.exerciseId === exerciseId) makeRestNeutral("exercise_closed");
   } else {
     next = { status: "notStarted" };
     logEvent("exercise_reset", { exercise: exName });
   }
   session.exerciseState[exerciseId] = next;
+  // Pinning the player to an exercise that is finished keeps it on screen while
+  // the next one waits; only keep the focus if there is still work to do here.
+  if(next.status === "done") hubFocusExId = null;
   persist();
   renderSeance();
 }
@@ -2906,6 +2914,31 @@ function restOwnerSet(siblingSets, idx){
   return siblingSets[idx-1] || null;
 }
 
+/* The rest taken before set `idx` of a list. Sets recorded since v1.39 carry it
+   directly (restBeforeSec), which is the only way to express the gap since the
+   previous exercise; older data only has the rest stored after the previous set. */
+function restBeforeOf(sets, idx){
+  if(!Array.isArray(sets) || idx < 0 || !sets[idx]) return null;
+  if(typeof sets[idx].restBeforeSec === "number") return sets[idx].restBeforeSec;
+  if(idx > 0 && sets[idx-1] && typeof sets[idx-1].restAfterSec === "number") return sets[idx-1].restAfterSec;
+  return null;
+}
+
+// Which set the rest currently running will be credited to when it stops. The
+// target exercise may not have any materialised rows yet (its sets are still a
+// draft), so the exercise is reported too.
+function restLandsOn(){
+  if(!activeRest) return null;
+  const fromId = activeRest.setRef ? activeRest.setRef.id : null;
+  const next = findNextIncompleteSet(fromId);
+  if(!next) return null;
+  return { exId: next.exId, setId: next.set ? next.set.id : null };
+}
+function restLandsOnSetId(){
+  const t = restLandsOn();
+  return t ? t.setId : null;
+}
+
 function renderSetRow(ex, s, idx, isDraft, session, lastPerf, siblingSets){
   const outer = document.createElement("div");
   outer.className = "set-row-outer";
@@ -2946,53 +2979,62 @@ function renderSetRow(ex, s, idx, isDraft, session, lastPerf, siblingSets){
 
   /* "Repos" = the rest that PRECEDES this set, not the one that follows it.
      Two lines: last session's value for reference (small, grey) and this
-     session's value underneath (bigger, bold). The number itself is still stored
-     on the previous set — only the row it is shown on changes. */
+     session's value underneath (bigger, bold). New sets carry their own
+     restBeforeSec — including the gap since the previous exercise — while older
+     data is read back from the restAfterSec of the set before. */
   const ownerSet = restOwnerSet(siblingSets, idx);
+  const landing = restLandsOn();
+  // A draft exercise has no real set ids yet: the rest still lands on its first row.
+  const landsHere = !!landing && (
+    (landing.setId && !isDraft && landing.setId === s.id) ||
+    (!landing.setId && idx === 0 && landing.exId === ex.id)
+  );
 
   const restEl = document.createElement("div");
   restEl.className = "set-restafter";
   const setRunning = !isDraft && s.startedAt && !s.completed;
 
   // Reference line: the rest taken before the same set index last time.
-  const prevOwner = lastPerf && idx > 0 ? lastPerf[idx-1] : null;
-  if(prevOwner && typeof prevOwner.restAfterSec === "number"){
+  const refSec = restBeforeOf(lastPerf, idx);
+  if(typeof refSec === "number"){
     const ref = document.createElement("span");
     ref.className = "rest-ref";
-    ref.textContent = formatMMSS(prevOwner.restAfterSec);
+    ref.textContent = formatMMSS(refSec);
     restEl.appendChild(ref);
   }
 
   const nowEl = document.createElement("span");
   nowEl.className = "rest-now";
+  const ownSec = restBeforeOf(siblingSets, idx);
   if(setRunning){
     // Set in progress: show its live duration rather than a rest that is over.
     nowEl.classList.add("set-live-chrono", "live-chrono");
     nowEl.dataset.startedAt = String(s.startedAt);
     nowEl.textContent = formatMMSS((Date.now() - s.startedAt)/1000);
-  } else if(ownerSet){
-    // The rest counting right now belongs to the row that follows the set it
-    // started from — which is this one.
-    if(activeRest && activeRest.setRef === ownerSet){
-      restEl.dataset.restOwnerId = ownerSet.id;
-      nowEl.classList.add("live");
-      nowEl.textContent = formatMMSS((Date.now() - activeRest.startTs)/1000);
-    } else if(typeof ownerSet.restAfterSec === "number"){
-      nowEl.textContent = formatMMSS(ownerSet.restAfterSec);
-    } else if(typeof ownerSet.restPlannedSec === "number"){
-      nowEl.textContent = formatMMSS(ownerSet.restPlannedSec);
-      nowEl.classList.add("planned");
-    } else {
-      nowEl.textContent = "—";
-    }
+  } else if(activeRest && landsHere){
+    // The rest counting right now is the one that leads into this set — whether
+    // it started in this exercise or is the neutral gap since the previous one.
+    restEl.dataset.restLandsOn = isDraft ? ("draft-"+ex.id) : s.id;
+    nowEl.classList.add("live");
+    nowEl.textContent = formatMMSS((Date.now() - activeRest.startTs)/1000);
+  } else if(typeof ownSec === "number"){
+    nowEl.textContent = formatMMSS(ownSec);
+  } else if(ownerSet && typeof ownerSet.restPlannedSec === "number"){
+    nowEl.textContent = formatMMSS(ownerSet.restPlannedSec);
+    nowEl.classList.add("planned");
   } else {
-    // First set of the exercise: nothing precedes it inside this exercise.
     nowEl.textContent = "—";
     nowEl.classList.add("planned");
   }
   restEl.appendChild(nowEl);
 
-  if(!setRunning && ownerSet){
+  if(!setRunning && !isDraft){
+    restEl.style.cursor = "pointer";
+    restEl.addEventListener("click", (e)=>{
+      e.stopPropagation();
+      openRestBeforeKeypad(ex, s, idx);
+    });
+  } else if(!setRunning && ownerSet){
     restEl.style.cursor = "pointer";
     restEl.addEventListener("click", (e)=>{
       e.stopPropagation();
@@ -3166,8 +3208,13 @@ function handleSetStatusTap(ex, s, idx, isDraft, activeSessionBefore){
 
   const status = getSetStatus(target, false);
   if(status === "notStarted"){
-    // Starting a set stops whatever rest was still counting from the previous one.
-    if(activeRest) stopRest();
+    // Starting a set stops whatever rest was still counting from the previous one,
+    // and credits it to THIS set as its "repos avant" — including when the rest
+    // came from another exercise (the gap between two machines).
+    if(activeRest){
+      target.restBeforeSec = Math.round((Date.now() - activeRest.startTs) / 1000);
+      stopRest();
+    }
     target.startedAt = Date.now();
     beginSessionIfNeeded(session);
     ensureExerciseActive(session, ex.id);
@@ -3304,16 +3351,40 @@ let activeRest = null; // {exerciseId, exerciseName, startTs, targetSec}
 // 2. The rest recorded for the *same set index* last time ("Avant" column value).
 // 3. The exercise's true historical average rest time.
 // 4. No data at all -> start immediately in overtime (target 0).
+// A "rest" of a few seconds is not a rest: it is a set logged late, a tap on
+// "série suivante" straight after finishing, or a correction. Taking such a value
+// as next time's objective makes the timer fire immediately — so anything below
+// this floor is ignored and the exercise's average is used instead.
+const MIN_MEANINGFUL_REST_SEC = 25;
+
 function computeRestTarget(ex, setRef){
   if(setRef && typeof setRef.restPlannedSec === "number") return setRef.restPlannedSec;
   if(setRef && typeof setRef.order === "number"){
     const lastPerf = getLastPerformance(ex.id, state.currentSessionId);
     const prevSet = lastPerf[setRef.order];
-    if(prevSet && typeof prevSet.restAfterSec === "number") return prevSet.restAfterSec;
+    if(prevSet && typeof prevSet.restAfterSec === "number" && prevSet.restAfterSec >= MIN_MEANINGFUL_REST_SEC){
+      return prevSet.restAfterSec;
+    }
   }
   const avg = computeAvgExerciseRest(ex.id);
-  if(avg !== null) return avg;
+  if(avg !== null && avg >= MIN_MEANINGFUL_REST_SEC) return avg;
   return 0;
+}
+
+/* Closing an exercise while its rest is still counting must not keep the player
+   pinned to that exercise: the rest becomes "neutral" — simply the time between
+   two exercises, with no objective and no beeps — and it is credited to the first
+   set of whatever comes next, as its "repos avant". */
+function makeRestNeutral(reason){
+  if(!activeRest || activeRest.neutral) return;
+  activeRest.neutral = true;
+  activeRest.targetSec = 0;
+  activeRest._pinged = true;        // no end-of-rest cue for an open-ended gap
+  activeRest.exerciseName = "Entre deux exercices";
+  hubFocusExId = null;
+  hubPinnedSetId = null;
+  saveActiveRest();
+  logEvent("rest_neutral", { reason: reason || null });
 }
 
 function startRest(ex, setRef){
@@ -3338,7 +3409,8 @@ function saveActiveRest(){
     exerciseName: activeRest.exerciseName,
     setId: activeRest.setRef ? activeRest.setRef.id : null,
     startTs: activeRest.startTs,
-    targetSec: activeRest.targetSec
+    targetSec: activeRest.targetSec,
+    neutral: !!activeRest.neutral
   } : null;
   persist();
   persistNow();
@@ -3369,6 +3441,7 @@ function restoreActiveRest(){
     setRef: setRef,
     startTs: saved.startTs,
     targetSec: saved.targetSec || 0,
+    neutral: !!saved.neutral,
     // Never replay beeps for seconds that elapsed while the app was closed.
     _pinged: (saved.targetSec || 0) > 0 ? (Date.now() - saved.startTs) / 1000 >= saved.targetSec : true
   };
@@ -3430,6 +3503,16 @@ function getCurrentSetContext(){
   // An explicit choice made with the hub's arrow wins, as long as that
   // exercise still has something left to do.
   if(hubFocusExId){
+    // A finished exercise opened on purpose (to adjust a weight, a rep count, an
+    // effort marker...) is shown as it is. It used to be dropped here because it had
+    // "nothing left to do", which silently sent you back to the exercise in progress.
+    // Only honoured in full screen, so the compact bar goes back to the live set.
+    const fEx = getExercise(hubFocusExId);
+    const fAll = session.sets.filter(st=>st.exerciseId===hubFocusExId).sort((a,b)=>a.order-b.order);
+    if(hubFocusMode && fEx && fAll.length && fAll.every(st=>st.completed)){
+      const lastIdx = fAll.length - 1;
+      return { session, ex: fEx, set: fAll[lastIdx], idx: lastIdx, total: fAll.length, reviewing: true };
+    }
     const stillOpen = session.sets.some(st=>st.exerciseId===hubFocusExId && !st.completed);
     if(stillOpen && getExercise(hubFocusExId)) {
       const fSets = session.sets.filter(st=>st.exerciseId===hubFocusExId).sort((a,b)=>a.order-b.order);
@@ -3546,6 +3629,10 @@ function renderHubSets(ctx){
 function exitHubFocus(){
   if(!hubFocusMode) return;
   hubFocusMode = false;
+  // A finished exercise that was only being looked at is released with the screen.
+  const sess = getWorkingSession();
+  if(sess && hubFocusExId && sess.sets.length &&
+     sess.sets.filter(st=>st.exerciseId===hubFocusExId).every(st=>st.completed)) hubFocusExId = null;
   renderControlHub();
 }
 
@@ -3722,7 +3809,7 @@ function renderControlHub(){
   }
 
   // What the arrow would move to — announced so the button is never a surprise.
-  const fromId = activeRest && activeRest.setRef ? activeRest.setRef.id : (ctx ? ctx.set.id : null);
+  const fromId = activeRest && activeRest.setRef ? activeRest.setRef.id : (ctx && !ctx.reviewing ? ctx.set.id : null);
   const upcoming = findNextIncompleteSet(fromId);
   renderUpNext(upnextEl, upcoming);
 
@@ -3731,24 +3818,34 @@ function renderControlHub(){
     const elapsed = (Date.now() - activeRest.startTs)/1000;
     const remaining = activeRest.targetSec - elapsed;
     const overtime = remaining < 0;
-    nameEl.textContent = activeRest.exerciseName;
+    // A neutral rest belongs to no exercise: it announces what comes next instead
+    // of keeping the finished exercise on screen.
+    const nextEx = (upcoming && getExercise(upcoming.exId)) || null;
+    nameEl.textContent = (ctx && ctx.reviewing)
+      ? ctx.ex.name
+      : (activeRest.neutral
+        ? (nextEx ? nextEx.name : "Entre deux exercices")
+        : activeRest.exerciseName);
     nameEl.classList.remove("active");
     const restNoteEl = document.getElementById("hub-ex-note");
     if(restNoteEl){
-      const rEx = getExercise(activeRest.exerciseId);
+      const rEx = (ctx && ctx.reviewing) ? ctx.ex : (activeRest.neutral ? nextEx : getExercise(activeRest.exerciseId));
       const rHas = !!(rEx && rEx.machineNote && rEx.machineNote.trim());
       restNoteEl.classList.toggle("empty", !rHas);
       restNoteEl.textContent = rHas ? rEx.machineNote.trim() : "";
       restNoteEl.onclick = rHas ? (e)=>{ e.stopPropagation(); openMachineNoteEditor(rEx); } : null;
     }
-    subEl.textContent = overtime
-      ? "Repos dépassé · prévu " + formatMMSS(activeRest.targetSec)
-      : "Repos en cours · prévu " + formatMMSS(activeRest.targetSec);
+    subEl.textContent = activeRest.neutral
+      ? "Repos entre exercices · sans objectif"
+      : (overtime
+        ? "Repos dépassé · prévu " + formatMMSS(activeRest.targetSec)
+        : "Repos en cours · prévu " + formatMMSS(activeRest.targetSec));
     actionEl.className = "hub-action-label rest";
     actionEl.textContent = "Arrêter le repos";
     // One consistent rest display everywhere: elapsed time is the big figure, with
     // the remaining countdown (or the overshoot) small underneath.
-    btn.className = "hub-play-btn resting" + (overtime ? " overtime" : "");
+    // "Dépassé" means nothing for an open-ended gap between two exercises.
+    btn.className = "hub-play-btn resting" + (overtime && !activeRest.neutral ? " overtime" : "");
     btn.innerHTML = '<span class="rest-main">' + formatMMSS(elapsed) + '</span>' +
       '<span class="rest-sub-inline">' +
       (activeRest.targetSec > 0
@@ -3931,14 +4028,18 @@ function finishExerciseIfComplete(session, exerciseId){
   const durationSec = Math.round((Date.now() - st.startedAt) / 1000);
   session.exerciseState[exerciseId] = { status:"done", startedAt: st.startedAt, doneAt: Date.now(), durationSec };
   logEvent("exercise_done", { exercise: (getExercise(exerciseId)||{}).name, durationSec, auto:true });
+  if(activeRest && activeRest.exerciseId === exerciseId) makeRestNeutral("exercise_auto_closed");
+  if(hubFocusExId === exerciseId) hubFocusExId = null;
 }
 
 function hubGoToNextSet(){
   const ctx = getCurrentSetContext();
-  const fromId = activeRest && activeRest.setRef ? activeRest.setRef.id : (ctx ? ctx.set.id : null);
+  const fromId = activeRest && activeRest.setRef ? activeRest.setRef.id : (ctx && !ctx.reviewing ? ctx.set.id : null);
   const leavingExId = activeRest ? activeRest.exerciseId : (ctx ? ctx.ex.id : null);
+  const restElapsed = activeRest ? Math.round((Date.now() - activeRest.startTs) / 1000) : null;
   if(activeRest) stopRest();
   const next = findNextIncompleteSet(fromId);
+  if(next && next.set && restElapsed !== null) next.set.restBeforeSec = restElapsed;
   hubPinnedSetId = null;
   const session = getWorkingSession();
   const changingExercise = !!next && next.exId !== leavingExId;
@@ -4025,15 +4126,18 @@ function refreshRestOverlay(){
   progress.setAttribute("stroke-dashoffset", circumference*(1-ratio));
   progress.setAttribute("stroke", overtime ? "#ff9f0a" : "#0a84ff");
 
-  if(activeRest.setRef){
-    // The running rest is displayed on the row of the set it leads INTO, which
-    // carries the owning set's id in data-rest-owner-id.
-    const cell = document.querySelector('.set-restafter[data-rest-owner-id="'+activeRest.setRef.id+'"] .rest-now');
+  {
+    // The running rest is displayed on the row of the set it leads INTO.
+    const t = restLandsOn();
+    const key = t ? (t.setId || ("draft-" + t.exId)) : null;
+    const cell = key
+      ? document.querySelector('.set-restafter[data-rest-lands-on="'+key+'"] .rest-now')
+      : null;
     if(cell){
       cell.textContent = formatMMSS(elapsed);
       cell.classList.remove("planned");
       cell.classList.add("live");
-      cell.classList.toggle("overtime-live", overtime);
+      cell.classList.toggle("overtime-live", overtime && !activeRest.neutral);
     }
   }
 
@@ -4165,6 +4269,20 @@ function formatDurationDigits(digits){
 // Edit a set's rest time: while it is the one currently counting live, editing
 // finalizes it immediately; once the set is done, it corrects the recorded value;
 // before the set is done, it pre-sets the planned target for its upcoming rest.
+// Editing the rest shown on a row writes it to that set directly, so a corrected
+// value means "the rest I took before this set", inter-exercise gaps included.
+function openRestBeforeKeypad(ex, s, idx){
+  keypadCtx = { mode: "duration", restBefore: true, setRef: s, ex, isDraft: false, idx, pristine: true };
+  const sameEx = (getWorkingSession() ? getWorkingSession().sets.filter(st=>st.exerciseId===ex.id).sort((a,b)=>a.order-b.order) : []);
+  const initialSec = restBeforeOf(sameEx, idx) || 0;
+  const mm = Math.floor(initialSec/60), ss = Math.round(initialSec%60);
+  keypadCtx.durationDigits = String(mm).padStart(2,"0") + String(ss).padStart(2,"0");
+  document.getElementById("keypad-unit").textContent = "repos avant";
+  document.getElementById("keypad-value").textContent = formatDurationDigits(keypadCtx.durationDigits);
+  document.querySelectorAll('.keypad-grid button[data-k=","]').forEach(b=> b.classList.add("disabled"));
+  showBackdrop("keypad-sheet");
+}
+
 function openRestKeypad(ex, s, isDraft, idx){
   keypadCtx = { mode: "duration", setRef: s, ex, isDraft: !!isDraft, idx, pristine: true };
   const initialSec = typeof s.restAfterSec === "number" ? s.restAfterSec
@@ -4246,6 +4364,27 @@ document.getElementById("keypad-confirm").addEventListener("click", ()=>{
     const digits = keypadCtx.durationDigits.padStart(4,"0");
     const totalSec = parseInt(digits.slice(0,2),10)*60 + parseInt(digits.slice(2,4),10);
     const s = keypadCtx.setRef;
+    if(keypadCtx.restBefore){
+      s.restBeforeSec = totalSec;
+      // Keep the old shape in step so averages and previous-session lookups agree.
+      const sameEx = getWorkingSession()
+        ? getWorkingSession().sets.filter(st=>st.exerciseId===keypadCtx.ex.id).sort((a,b)=>a.order-b.order)
+        : [];
+      const prev = keypadCtx.idx > 0 ? sameEx[keypadCtx.idx-1] : null;
+      if(prev) prev.restAfterSec = totalSec;
+      if(activeRest && restLandsOnSetId() === s.id){
+        activeRest = null;
+        saveActiveRest();
+        clearInterval(restTicker);
+        restTicker = null;
+        refreshRestOverlay();
+      }
+      persist();
+      hideBackdrop("keypad-sheet");
+      keypadCtx = null;
+      renderSeance();
+      return;
+    }
     if(keypadCtx.isDraft){
       // Planning a rest time before the exercise has ever been started must survive
       // a page reload, unlike ordinary draft edits — so materialize this set for real
